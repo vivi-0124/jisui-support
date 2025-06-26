@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -30,8 +30,9 @@ import {
   Trash2,
   Edit,
   Heart,
+  Filter,
 } from "lucide-react";
-import { buttonVariants, iconColorVariants, textColorVariants } from "@/lib/theme-variants";
+import { buttonVariants, iconColorVariants, textColorVariants, cardVariants } from "@/lib/theme-variants";
 
 interface Recipe {
   id: string;
@@ -367,6 +368,8 @@ export default function RecipeManagement() {
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
 
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedDifficulty, setSelectedDifficulty] = useState("all");
+  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
 
   // ローカルストレージからレシピデータを読み込み
   useEffect(() => {
@@ -385,7 +388,13 @@ export default function RecipeManagement() {
   const filteredRecipes = recipes.filter((recipe) => {
     const matchesCategory =
       selectedCategory === "all" || recipe.category === selectedCategory;
-    return matchesCategory;
+    
+    const matchesDifficulty =
+      selectedDifficulty === "all" || recipe.difficulty === selectedDifficulty;
+    
+    const matchesFavorites = !showOnlyFavorites || recipe.isFavorite;
+    
+    return matchesCategory && matchesDifficulty && matchesFavorites;
   });
 
   const favoriteRecipes = recipes.filter((recipe) => recipe.isFavorite);
@@ -414,7 +423,9 @@ export default function RecipeManagement() {
 
   // レシピを削除
   const handleDeleteRecipe = (id: string) => {
-    setRecipes(recipes.filter((recipe) => recipe.id !== id));
+    if (confirm("このレシピを削除しますか？")) {
+      setRecipes(recipes.filter((recipe) => recipe.id !== id));
+    }
   };
 
   // レシピを編集
@@ -436,6 +447,13 @@ export default function RecipeManagement() {
     );
   };
 
+  // フィルターをクリア
+  const clearFilters = () => {
+    setSelectedCategory("all");
+    setSelectedDifficulty("all");
+    setShowOnlyFavorites(false);
+  };
+
   return (
     <div className="space-y-6">
       {/* 統計 */}
@@ -448,65 +466,87 @@ export default function RecipeManagement() {
           <Heart className="w-4 h-4 text-red-600" />
           <span>お気に入り {favoriteRecipes.length}品</span>
         </div>
-        <div className="flex items-center gap-1">
-          <BookOpen className={iconColorVariants({ theme: "recipes" })} />
-          <span>カテゴリ {categories.length}種</span>
-        </div>
-      </div>
-
-      {/* カテゴリ選択とレシピ追加 */}
-      <div className="space-y-4">
-        {/* カテゴリフィルター */}
-        <div>
-          <h3 className="text-sm font-medium text-gray-700 mb-3">カテゴリで絞り込み</h3>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              onClick={() => setSelectedCategory("all")}
-              className={buttonVariants({ 
-                theme: "recipes", 
-                variant: selectedCategory === "all" ? "solid" : "outline",
-                size: "sm" 
-              })}
-            >
-              すべて
-            </Button>
-            {categories.map((category) => (
-              <Button
-                key={category}
-                size="sm"
-                onClick={() => setSelectedCategory(category)}
-                className={buttonVariants({ 
-                  theme: "recipes", 
-                  variant: selectedCategory === category ? "solid" : "outline",
-                  size: "sm" 
-                })}
-              >
-                {category}
-              </Button>
-            ))}
-          </div>
-        </div>
-        
-        {/* レシピ追加ボタン */}
-        {recipes.length > 0 && (
-          <div className="flex justify-end">
-            <AddRecipeButton 
-              onSave={handleSaveRecipe}
-              editingRecipe={editingRecipe}
-              onEditComplete={handleEditComplete}
-            >
-              <Button className={buttonVariants({ theme: "recipes" })}>
-                <Plus className="w-4 h-4 mr-2" />
-                レシピを追加
-              </Button>
-            </AddRecipeButton>
+        {filteredRecipes.length !== recipes.length && (
+          <div className="flex items-center gap-1">
+            <Filter className="w-4 h-4 text-blue-600" />
+            <span>絞り込み結果 {filteredRecipes.length}品</span>
           </div>
         )}
       </div>
 
+      {/* レシピ追加とフィルター */}
+      <div className="flex flex-row justify-between items-center gap-4">
+        <h2 className="text-xl font-semibold">レシピ一覧</h2>
+        {recipes.length > 0 && (
+          <AddRecipeButton 
+            onSave={handleSaveRecipe}
+            editingRecipe={editingRecipe}
+            onEditComplete={handleEditComplete}
+          >
+            <Button className={buttonVariants({ theme: "recipes" })}>
+              <Plus className="w-4 h-4 mr-2" />
+              レシピを追加
+            </Button>
+          </AddRecipeButton>
+        )}
+      </div>
+
+      {/* フィルター */}
+      {recipes.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="h-10 bg-gray-50 hover:bg-gray-100 border-gray-200 transition-colors">
+                <SelectValue placeholder="カテゴリを選択" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">すべてのカテゴリ</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedDifficulty} onValueChange={setSelectedDifficulty}>
+              <SelectTrigger className="h-10 bg-gray-50 hover:bg-gray-100 border-gray-200 transition-colors">
+                <SelectValue placeholder="難易度を選択" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">すべての難易度</SelectItem>
+                {difficultyOptions.map((difficulty) => (
+                  <SelectItem key={difficulty} value={difficulty}>
+                    {difficulty}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Button
+              variant={showOnlyFavorites ? "default" : "outline"}
+              onClick={() => setShowOnlyFavorites(!showOnlyFavorites)}
+              className="h-10 transition-all duration-200 hover:scale-105"
+            >
+              <Heart className={`w-4 h-4 mr-2 ${showOnlyFavorites ? "fill-current" : ""}`} />
+              お気に入り
+            </Button>
+
+            {(selectedCategory !== "all" || selectedDifficulty !== "all" || showOnlyFavorites) && (
+              <Button 
+                variant="ghost" 
+                onClick={clearFilters} 
+                className="h-10 text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                リセット
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* レシピリスト */}
-      <div className="grid gap-4">
+      <div className="space-y-6">
         {filteredRecipes.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
@@ -536,81 +576,164 @@ export default function RecipeManagement() {
             </CardContent>
           </Card>
         ) : (
-          filteredRecipes.map((recipe) => (
-            <Card key={recipe.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <CardTitle className="flex items-center gap-2">
-                      {recipe.name}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => toggleFavorite(recipe.id)}
-                        className="p-1 h-auto"
-                      >
-                        <Heart
-                          className={`w-4 h-4 ${
-                            recipe.isFavorite
-                              ? "fill-red-500 text-red-500"
-                              : "text-gray-400"
-                          }`}
-                        />
-                      </Button>
-                    </CardTitle>
-                    <div className="flex items-center gap-2 mt-2">
-                      <Badge variant="secondary">{recipe.category}</Badge>
-                      <Badge variant="outline">{recipe.difficulty}</Badge>
-                      <div className="flex items-center gap-1 text-sm text-gray-600">
-                        <Clock className="w-3 h-3" />
-                        {recipe.cookingTime}分
-                      </div>
-                      <div className="flex items-center gap-1 text-sm text-gray-600">
-                        <Users className="w-3 h-3" />
-                        {recipe.servings}人分
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEditRecipe(recipe)}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDeleteRecipe(recipe.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+          <>
+            {/* お気に入りレシピ */}
+            {filteredRecipes.filter(recipe => recipe.isFavorite).length > 0 && (
+              <div className="space-y-3">
+                <h3 className={`text-lg font-semibold flex items-center gap-2 ${textColorVariants({ theme: "recipes" })}`}>
+                  <Heart className="w-5 h-5 fill-red-500 text-red-500" />
+                  お気に入りレシピ ({filteredRecipes.filter(recipe => recipe.isFavorite).length}品)
+                </h3>
+                <div className="grid gap-3">
+                  {filteredRecipes.filter(recipe => recipe.isFavorite).map((recipe) => (
+                    <Card key={recipe.id} className={cardVariants({ theme: "recipes" })}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="font-semibold text-lg">{recipe.name}</h4>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => toggleFavorite(recipe.id)}
+                                className="p-1 h-auto"
+                              >
+                                <Heart className="w-4 h-4 fill-red-500 text-red-500" />
+                              </Button>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 mb-3">
+                              <Badge variant="secondary">{recipe.category}</Badge>
+                              <Badge variant="outline">{recipe.difficulty}</Badge>
+                              <div className="flex items-center gap-1 text-sm text-gray-600">
+                                <Clock className="w-3 h-3" />
+                                <span>{recipe.cookingTime}分</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-sm text-gray-600">
+                                <Users className="w-3 h-3" />
+                                <span>{recipe.servings}人分</span>
+                              </div>
+                            </div>
+                            <div className="space-y-2 text-sm text-gray-600">
+                              <div>
+                                <span className="font-medium">材料: </span>
+                                <span>
+                                  {recipe.ingredients.slice(0, 3).join(", ")}
+                                  {recipe.ingredients.length > 3 && `など${recipe.ingredients.length}種類`}
+                                </span>
+                              </div>
+                              {recipe.instructions.length > 0 && (
+                                <div>
+                                  <span className="font-medium">手順: </span>
+                                  <span>
+                                    {recipe.instructions[0]}
+                                    {recipe.instructions.length > 1 && `など${recipe.instructions.length}ステップ`}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-2 ml-4">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditRecipe(recipe)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeleteRecipe(recipe.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div>
-                    <h4 className="font-semibold text-sm mb-1">材料:</h4>
-                    <div className="text-sm text-gray-600">
-                      {recipe.ingredients.slice(0, 3).join(", ")}
-                      {recipe.ingredients.length > 3 && "..."}
-                    </div>
-                  </div>
-                  {recipe.instructions.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-sm mb-1">手順:</h4>
-                      <div className="text-sm text-gray-600">
-                        1. {recipe.instructions[0]}
-                        {recipe.instructions.length > 1 && "..."}
-                      </div>
-                    </div>
-                  )}
+              </div>
+            )}
+
+            {/* その他のレシピ */}
+            {filteredRecipes.filter(recipe => !recipe.isFavorite).length > 0 && (
+              <div className="space-y-3">
+                <h3 className={`text-lg font-semibold ${textColorVariants({ theme: "recipes" })}`}>
+                  その他のレシピ ({filteredRecipes.filter(recipe => !recipe.isFavorite).length}品)
+                </h3>
+                <div className="grid gap-3">
+                  {filteredRecipes.filter(recipe => !recipe.isFavorite).map((recipe) => (
+                    <Card key={recipe.id} className={cardVariants({ theme: "recipes" })}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="font-semibold text-lg">{recipe.name}</h4>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => toggleFavorite(recipe.id)}
+                                className="p-1 h-auto"
+                              >
+                                <Heart className="w-4 h-4 text-gray-400" />
+                              </Button>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 mb-3">
+                              <Badge variant="secondary">{recipe.category}</Badge>
+                              <Badge variant="outline">{recipe.difficulty}</Badge>
+                              <div className="flex items-center gap-1 text-sm text-gray-600">
+                                <Clock className="w-3 h-3" />
+                                <span>{recipe.cookingTime}分</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-sm text-gray-600">
+                                <Users className="w-3 h-3" />
+                                <span>{recipe.servings}人分</span>
+                              </div>
+                            </div>
+                            <div className="space-y-2 text-sm text-gray-600">
+                              <div>
+                                <span className="font-medium">材料: </span>
+                                <span>
+                                  {recipe.ingredients.slice(0, 3).join(", ")}
+                                  {recipe.ingredients.length > 3 && `など${recipe.ingredients.length}種類`}
+                                </span>
+                              </div>
+                              {recipe.instructions.length > 0 && (
+                                <div>
+                                  <span className="font-medium">手順: </span>
+                                  <span>
+                                    {recipe.instructions[0]}
+                                    {recipe.instructions.length > 1 && `など${recipe.instructions.length}ステップ`}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-2 ml-4">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditRecipe(recipe)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeleteRecipe(recipe.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
-          ))
+              </div>
+            )}
+          </>
         )}
       </div>
 
