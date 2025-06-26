@@ -311,7 +311,7 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
   const isPartiallySelected = selectedIngredientIds.length > 0 && selectedIngredientIds.length < ingredients.length;
 
   return (
-    <div className="space-y-8 mt-10 min-h-full">
+    <div className="space-y-8 mt-16 min-h-full">
       {/* 材料選択セクション */}
       {ingredients.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
