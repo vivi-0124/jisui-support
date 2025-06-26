@@ -338,11 +338,15 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
                   {/* 全選択 */}
                   <div 
                     className="flex items-center space-x-3 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 cursor-pointer transition-colors"
-                    onClick={() => toggleSelectAll()}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      toggleSelectAll();
+                    }}
                   >
                     <Checkbox
                       id="select-all"
                       checked={isAllSelected}
+                      onChange={() => {}} // 空の関数で独自のクリックハンドリングを無効化
                       ref={(el) => {
                         if (el) {
                           const input = el.querySelector("input");
@@ -351,11 +355,11 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
                           }
                         }
                       }}
-                      className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500"
+                      className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 pointer-events-none"
                     />
-                    <Label htmlFor="select-all" className="cursor-pointer flex-1 font-medium text-gray-700">
+                    <div className="cursor-pointer flex-1 font-medium text-gray-700">
                       すべて選択
-                    </Label>
+                    </div>
                   </div>
 
                   {/* 個別材料 */}
@@ -370,16 +374,26 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
                               ? "border-green-300 bg-green-50 shadow-sm scale-[1.02]" 
                               : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
                           }`}
-                          onClick={() => toggleIngredientSelection(ingredient.id)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            toggleIngredientSelection(ingredient.id);
+                          }}
                         >
                           <Checkbox
                             id={ingredient.id}
                             checked={isSelected}
-                            className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500"
+                            onChange={() => {}} // 空の関数で独自のクリックハンドリングを無効化
+                            className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 pointer-events-none"
                           />
-                          <Label htmlFor={ingredient.id} className="cursor-pointer flex-1 font-medium text-gray-700">
+                          <div 
+                            className="cursor-pointer flex-1 font-medium text-gray-700"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleIngredientSelection(ingredient.id);
+                            }}
+                          >
                             {ingredient.ingredient_name}
-                          </Label>
+                          </div>
                           {isSelected && (
                             <div className="flex items-center justify-center w-6 h-6 bg-green-500 rounded-full">
                               <span className="text-white text-xs">✓</span>
