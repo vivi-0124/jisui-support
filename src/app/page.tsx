@@ -79,7 +79,7 @@ export default function JisuiSupport() {
                   <Search className="w-5 h-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-full sm:w-[540px] overflow-y-auto px-4 sm:px-6">
+              <SheetContent side="right" className="w-full sm:w-[540px] overflow-y-auto px-4 sm:px-6 h-full">
                 <RecipeSearchSheet 
                   onResultsChange={setSearchResults} 
                   onClose={() => {
@@ -207,7 +207,6 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
   const [error, setError] = useState("");
   const [ingredients, setIngredients] = useState<InventoryItem[]>([]);
   const [selectedIngredientIds, setSelectedIngredientIds] = useState<string[]>([]);
-  const [inputReadonly, setInputReadonly] = useState(true);
 
   // 実際の材料データをlocalStorageから取得
   useEffect(() => {
@@ -312,62 +311,7 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
   const isPartiallySelected = selectedIngredientIds.length > 0 && selectedIngredientIds.length < ingredients.length;
 
   return (
-    <div className="space-y-8 mt-10">
-      {/* 検索フォーム */}
-      <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100 shadow-sm">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Search className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <Label htmlFor="search-input" className="text-lg font-semibold text-gray-800">
-                  検索キーワード
-                </Label>
-                <p className="text-sm text-gray-600 mt-1">
-                  料理名、ジャンル、材料名などを入力してください
-                </p>
-              </div>
-            </div>
-            
-            <div className="relative">
-              <Input
-                id="search-input"
-                type="text"
-                readOnly={inputReadonly}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onClick={() => setInputReadonly(false)}
-                placeholder="例：和食、洋食、中華、イタリアン..."
-                className={`h-12 pl-4 pr-4 text-base bg-white border-2 border-green-200 rounded-xl focus:border-green-400 focus:ring-4 focus:ring-green-100 transition-all duration-200 shadow-sm ${inputReadonly ? 'cursor-pointer' : ''}`}
-              />
-              <div className="absolute inset-y-0 right-0 flex items-center pr-4">
-                <Search className="h-5 w-5 text-gray-400" />
-              </div>
-            </div>
-          </div>
-          
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-          >
-            {loading ? (
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                検索中...
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Search className="h-5 w-5" />
-                レシピを検索する
-              </div>
-            )}
-          </Button>
-        </form>
-      </div>
-
+    <div className="space-y-8 mt-10 min-h-full">
       {/* 材料選択セクション */}
       {ingredients.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
@@ -451,6 +395,60 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
           </Accordion>
         </div>
       )}
+
+      {/* 検索フォーム */}
+      <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100 shadow-sm">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Search className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <Label htmlFor="search-input" className="text-lg font-semibold text-gray-800">
+                  検索キーワード
+                </Label>
+                <p className="text-sm text-gray-600 mt-1">
+                  料理名、ジャンル、材料名などを入力してください
+                </p>
+              </div>
+            </div>
+            
+            <div className="relative">
+              <Input
+                id="search-input"
+                type="text"
+                autoFocus={false}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="例：和食、洋食、中華、イタリアン..."
+                className="h-12 pl-4 pr-4 text-base bg-white border-2 border-green-200 rounded-xl focus:border-green-400 focus:ring-4 focus:ring-green-100 transition-all duration-200 shadow-sm"
+              />
+              <div className="absolute inset-y-0 right-0 flex items-center pr-4">
+                <Search className="h-5 w-5 text-gray-400" />
+              </div>
+            </div>
+          </div>
+          
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+          >
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                検索中...
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Search className="h-5 w-5" />
+                レシピを検索する
+              </div>
+            )}
+          </Button>
+        </form>
+      </div>
 
       {/* エラー表示 */}
       {error && (
