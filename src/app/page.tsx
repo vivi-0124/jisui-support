@@ -207,6 +207,7 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
   const [error, setError] = useState("");
   const [ingredients, setIngredients] = useState<InventoryItem[]>([]);
   const [selectedIngredientIds, setSelectedIngredientIds] = useState<string[]>([]);
+  const [inputReadonly, setInputReadonly] = useState(true);
 
   // 実際の材料データをlocalStorageから取得
   useEffect(() => {
@@ -333,12 +334,13 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
             <div className="relative">
               <Input
                 id="search-input"
-                autoFocus={false}
                 type="text"
+                readOnly={inputReadonly}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onClick={() => setInputReadonly(false)}
                 placeholder="例：和食、洋食、中華、イタリアン..."
-                className="h-12 pl-4 pr-4 text-base bg-white border-2 border-green-200 rounded-xl focus:border-green-400 focus:ring-4 focus:ring-green-100 transition-all duration-200 shadow-sm"
+                className={`h-12 pl-4 pr-4 text-base bg-white border-2 border-green-200 rounded-xl focus:border-green-400 focus:ring-4 focus:ring-green-100 transition-all duration-200 shadow-sm ${inputReadonly ? 'cursor-pointer' : ''}`}
               />
               <div className="absolute inset-y-0 right-0 flex items-center pr-4">
                 <Search className="h-5 w-5 text-gray-400" />
