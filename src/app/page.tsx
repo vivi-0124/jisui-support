@@ -2,14 +2,14 @@
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -79,16 +79,7 @@ export default function JisuiSupport() {
                   <Search className="w-5 h-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-full sm:w-[540px] overflow-y-auto">
-                <SheetHeader>
-                  <SheetTitle className="flex items-center gap-2">
-                    <Search className="h-5 w-5 text-green-500" />
-                    レシピ検索
-                  </SheetTitle>
-                  <SheetDescription>
-                    材料やキーワードを使ってレシピを検索できます
-                  </SheetDescription>
-                </SheetHeader>
+              <SheetContent side="right" className="w-full sm:w-[540px] overflow-y-auto px-4 sm:px-6">
                 <RecipeSearchSheet 
                   onResultsChange={setSearchResults} 
                   onClose={() => {
@@ -320,51 +311,88 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
   const isPartiallySelected = selectedIngredientIds.length > 0 && selectedIngredientIds.length < ingredients.length;
 
   return (
-    <div className="space-y-6 mt-6">
+    <div className="space-y-8 mt-10">
       {/* 検索フォーム */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <Label htmlFor="search-input">検索キーワード</Label>
-          <Input
-            id="search-input"
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="例：和食、洋食、中華、イタリアン..."
-            className="focus:border-green-400 focus:ring-green-300"
-          />
-        </div>
-        <Button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-green-600 hover:bg-green-700"
-        >
-          {loading ? "検索中..." : "検索"}
-        </Button>
-      </form>
+      <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100 shadow-sm">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Search className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <Label htmlFor="search-input" className="text-lg font-semibold text-gray-800">
+                  検索キーワード
+                </Label>
+                <p className="text-sm text-gray-600 mt-1">
+                  料理名、ジャンル、材料名などを入力してください
+                </p>
+              </div>
+            </div>
+            
+            <div className="relative">
+              <Input
+                id="search-input"
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="例：和食、洋食、中華、イタリアン..."
+                className="h-12 pl-4 pr-4 text-base bg-white border-2 border-green-200 rounded-xl focus:border-green-400 focus:ring-4 focus:ring-green-100 transition-all duration-200 shadow-sm"
+              />
+              <div className="absolute inset-y-0 right-0 flex items-center pr-4">
+                <Search className="h-5 w-5 text-gray-400" />
+              </div>
+            </div>
+          </div>
+          
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+          >
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                検索中...
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Search className="h-5 w-5" />
+                レシピを検索する
+              </div>
+            )}
+          </Button>
+        </form>
+      </div>
 
       {/* 材料選択セクション */}
       {ingredients.length > 0 && (
-        <div className="space-y-4">
-          <Separator />
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="ingredients">
-              <AccordionTrigger>
-                <div className="flex items-center gap-2">
-                  <Utensils className="h-4 w-4 text-green-600" />
-                  <span>使用する材料を選択</span>
+            <AccordionItem value="ingredients" className="border-none">
+              <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <Utensils className="h-4 w-4 text-green-600" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-semibold text-gray-800">使用する材料を選択</div>
+                    <div className="text-sm text-gray-500">在庫の材料から選んでより具体的に検索</div>
+                  </div>
                   {selectedIngredientIds.length > 0 && (
-                    <Badge variant="secondary" className="ml-2 bg-green-100 text-green-700 border-green-200">
+                    <Badge variant="secondary" className="ml-auto bg-green-100 text-green-700 border-green-200">
                       {selectedIngredientIds.length}個選択中
                     </Badge>
                   )}
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="pt-4">
-                <div className="space-y-3">
+              <AccordionContent className="px-6 pb-6">
+                <div className="space-y-4 pt-2">
                   {/* 全選択 */}
-                  <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                       onClick={() => toggleSelectAll()}>
+                  <div 
+                    className="flex items-center space-x-3 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 cursor-pointer transition-colors"
+                    onClick={() => toggleSelectAll()}
+                  >
                     <Checkbox
                       id="select-all"
                       checked={isAllSelected}
@@ -378,20 +406,22 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
                       }}
                       className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500"
                     />
-                    <Label htmlFor="select-all" className="text-sm cursor-pointer flex-1 font-medium">
+                    <Label htmlFor="select-all" className="cursor-pointer flex-1 font-medium text-gray-700">
                       すべて選択
                     </Label>
                   </div>
 
                   {/* 個別材料 */}
-                  <div className="grid grid-cols-1 gap-2">
+                  <div className="grid grid-cols-1 gap-3">
                     {ingredients.map((ingredient) => {
                       const isSelected = selectedIngredientIds.includes(ingredient.id);
                       return (
                         <div
                           key={ingredient.id}
-                          className={`flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer ${
-                            isSelected ? "border-green-400 bg-green-50" : "border-gray-200"
+                          className={`flex items-center space-x-3 p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
+                            isSelected 
+                              ? "border-green-300 bg-green-50 shadow-sm scale-[1.02]" 
+                              : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
                           }`}
                           onClick={() => toggleIngredientSelection(ingredient.id)}
                         >
@@ -400,9 +430,14 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
                             checked={isSelected}
                             className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500"
                           />
-                          <Label htmlFor={ingredient.id} className="text-sm cursor-pointer flex-1">
+                          <Label htmlFor={ingredient.id} className="cursor-pointer flex-1 font-medium text-gray-700">
                             {ingredient.ingredient_name}
                           </Label>
+                          {isSelected && (
+                            <div className="flex items-center justify-center w-6 h-6 bg-green-500 rounded-full">
+                              <span className="text-white text-xs">✓</span>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -416,12 +451,18 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
 
       {/* エラー表示 */}
       {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            <span className="font-semibold">エラー:</span> {error}
-          </AlertDescription>
-        </Alert>
+        <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4">
+          <Alert variant="destructive" className="border-none bg-transparent">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-100 rounded-lg">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+              </div>
+              <AlertDescription className="text-red-800 font-medium">
+                {error}
+              </AlertDescription>
+            </div>
+          </Alert>
+        </div>
       )}
     </div>
   );
