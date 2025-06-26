@@ -333,6 +333,7 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
             <div className="relative">
               <Input
                 id="search-input"
+                autoFocus={false}
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
