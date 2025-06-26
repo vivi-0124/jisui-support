@@ -147,7 +147,7 @@ export default function JisuiSupport() {
               </SheetTrigger>
               <SheetContent side="right" className="w-full sm:w-[540px] overflow-y-auto px-4 sm:px-6 h-full">
                 <SheetHeader>
-                  <SheetTitle>レシピ検索</SheetTitle>
+                  <SheetTitle></SheetTitle>
                 </SheetHeader>
                 <RecipeSearchSheet 
                   onResultsChange={setSearchResults} 

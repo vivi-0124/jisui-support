@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { User, Session, AuthResponse, AuthTokenResponsePassword } from '@supabase/supabase-js'
+import { User, Session, AuthResponse, AuthTokenResponsePassword, OAuthResponse } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 
 interface AuthContextType {
@@ -11,6 +11,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<AuthTokenResponsePassword>
   signUp: (email: string, password: string) => Promise<AuthResponse>
   signOut: () => Promise<void>
+  signInWithGoogle: () => Promise<OAuthResponse>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -72,6 +73,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     await supabase.auth.signOut()
   }
 
+  const signInWithGoogle = async () => {
+    const result = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+    })
+    return result
+  }
+
   const value: AuthContextType = {
     user,
     session,
@@ -79,6 +87,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signIn,
     signUp,
     signOut,
+    signInWithGoogle,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

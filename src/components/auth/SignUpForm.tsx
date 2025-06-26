@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useAuth } from '@/contexts/AuthContext'
-import { Loader2, Mail, Lock } from 'lucide-react'
+import { Loader2, Mail, Lock, Chrome } from 'lucide-react'
 
 interface SignUpFormProps {
   onToggleMode: () => void
@@ -22,7 +22,17 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onToggleMode, onAuthSucc
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
-  const { signUp } = useAuth()
+  const { signUp, signInWithGoogle } = useAuth()
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true)
+    setError(null)
+    const { error } = await signInWithGoogle()
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -140,6 +150,29 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onToggleMode, onAuthSucc
             )}
           </Button>
         </form>
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-card px-2 text-muted-foreground">
+              または
+            </span>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={handleGoogleSignIn}
+          disabled={loading}
+        >
+          {loading ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Chrome className="mr-2 h-4 w-4" />
+          )}
+          Googleで登録
+        </Button>
         <div className="text-center">
           <Button 
             variant="link" 
