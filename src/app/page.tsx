@@ -336,70 +336,74 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
               <AccordionContent className="px-6 pb-6">
                 <div className="space-y-4 pt-2">
                   {/* 全選択 */}
-                  <div 
-                    className="flex items-center space-x-3 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 cursor-pointer transition-colors"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      toggleSelectAll();
-                    }}
+                  <Button 
+                    variant="outline"
+                    size="lg"
+                    className="w-full justify-start space-x-4 p-5 h-auto bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-300"
+                    onClick={() => toggleSelectAll()}
                   >
-                    <Checkbox
-                      id="select-all"
-                      checked={isAllSelected}
-                      onChange={() => {}} // 空の関数で独自のクリックハンドリングを無効化
-                      ref={(el) => {
-                        if (el) {
-                          const input = el.querySelector("input");
-                          if (input) {
-                            input.indeterminate = isPartiallySelected;
+                    <div className="flex items-center justify-center w-5 h-5">
+                      <Checkbox
+                        id="select-all"
+                        checked={isAllSelected}
+                        ref={(el) => {
+                          if (el) {
+                            const input = el.querySelector("input");
+                            if (input) {
+                              input.indeterminate = isPartiallySelected;
+                            }
                           }
-                        }
-                      }}
-                      className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 pointer-events-none"
-                    />
-                    <div className="cursor-pointer flex-1 font-medium text-gray-700">
-                      すべて選択
+                        }}
+                        className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 pointer-events-none"
+                      />
                     </div>
-                  </div>
+                    <span className="flex-1 font-medium text-gray-700 text-left">
+                      すべて選択
+                    </span>
+                    <div className="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded">
+                      {ingredients.length}個
+                    </div>
+                  </Button>
 
                   {/* 個別材料 */}
                   <div className="grid grid-cols-1 gap-3">
                     {ingredients.map((ingredient) => {
                       const isSelected = selectedIngredientIds.includes(ingredient.id);
                       return (
-                        <div
+                        <Button
                           key={ingredient.id}
-                          className={`flex items-center space-x-3 p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
+                          variant="outline"
+                          size="lg"
+                          className={`w-full justify-start space-x-4 p-5 h-auto group ${
                             isSelected 
-                              ? "border-green-300 bg-green-50 shadow-sm scale-[1.02]" 
-                              : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+                              ? "border-green-400 bg-green-50 shadow-md scale-[1.02] ring-2 ring-green-100 hover:bg-green-50" 
+                              : "border-gray-200 bg-white hover:border-green-200 hover:bg-green-50 hover:shadow-sm"
                           }`}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            toggleIngredientSelection(ingredient.id);
-                          }}
+                          onClick={() => toggleIngredientSelection(ingredient.id)}
                         >
-                          <Checkbox
-                            id={ingredient.id}
-                            checked={isSelected}
-                            onChange={() => {}} // 空の関数で独自のクリックハンドリングを無効化
-                            className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 pointer-events-none"
-                          />
-                          <div 
-                            className="cursor-pointer flex-1 font-medium text-gray-700"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleIngredientSelection(ingredient.id);
-                            }}
-                          >
-                            {ingredient.ingredient_name}
+                          <div className="flex items-center justify-center w-5 h-5">
+                            <Checkbox
+                              id={ingredient.id}
+                              checked={isSelected}
+                              className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 pointer-events-none"
+                            />
                           </div>
-                          {isSelected && (
-                            <div className="flex items-center justify-center w-6 h-6 bg-green-500 rounded-full">
-                              <span className="text-white text-xs">✓</span>
-                            </div>
-                          )}
-                        </div>
+                          <span className="flex-1 font-medium text-gray-700 text-left group-hover:text-gray-900">
+                            {ingredient.ingredient_name}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            {ingredient.quantity && ingredient.unit && (
+                              <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                {ingredient.quantity}{ingredient.unit}
+                              </div>
+                            )}
+                            {isSelected && (
+                              <div className="flex items-center justify-center w-7 h-7 bg-green-500 rounded-full shadow-sm">
+                                <span className="text-white text-sm font-bold">✓</span>
+                              </div>
+                            )}
+                                                      </div>
+                          </Button>
                       );
                     })}
                   </div>
