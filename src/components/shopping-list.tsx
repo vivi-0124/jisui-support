@@ -31,16 +31,19 @@ import {
   Edit,
 } from "lucide-react";
 import { buttonVariants, iconColorVariants, cardVariants, textColorVariants } from "@/lib/theme-variants";
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ShoppingItem {
   id: string;
+  user_id: string;
   name: string;
   category: string;
   quantity: number;
   unit: string;
-  isPurchased: boolean;
-  notes?: string;
-  addedDate: string;
+  is_purchased: boolean;
+  notes: string | null;
+  added_date: string;
 }
 
 const categories = [
@@ -56,29 +59,28 @@ const categories = [
 const units = ["個", "g", "kg", "ml", "L", "本", "枚", "袋", "パック"];
 
 interface AddShoppingItemButtonProps {
-  onSave: (item: Omit<ShoppingItem, "id" | "addedDate">) => void;
+  onSave: (item: Omit<ShoppingItem, "id" | "user_id" | "added_date">) => void;
   editingItem?: ShoppingItem | null;
   onEditComplete?: () => void;
   children: React.ReactNode;
 }
 
-function AddShoppingItemButton({ 
-  onSave, 
-  editingItem, 
-  onEditComplete, 
-  children 
+function AddShoppingItemButton({
+  onSave,
+  editingItem,
+  onEditComplete,
+  children
 }: AddShoppingItemButtonProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newItem, setNewItem] = useState<Omit<ShoppingItem, "id" | "addedDate">>({
+  const [newItem, setNewItem] = useState<Omit<ShoppingItem, "id" | "user_id" | "added_date">>({
     name: "",
     category: "",
     quantity: 1,
     unit: "",
-    isPurchased: false,
-    notes: "",
+    is_purchased: false,
+    notes: null,
   });
 
-  // 編集モードの時に初期値をセット
   useEffect(() => {
     if (editingItem) {
       setNewItem({
@@ -86,8 +88,8 @@ function AddShoppingItemButton({
         category: editingItem.category,
         quantity: editingItem.quantity,
         unit: editingItem.unit,
-        isPurchased: editingItem.isPurchased,
-        notes: editingItem.notes || "",
+        is_purchased: editingItem.is_purchased,
+        notes: editingItem.notes || null,
       });
       setIsDialogOpen(true);
     }
@@ -113,8 +115,8 @@ function AddShoppingItemButton({
       category: "",
       quantity: 1,
       unit: "",
-      isPurchased: false,
-      notes: "",
+      is_purchased: false,
+      notes: null,
     });
     if (editingItem && onEditComplete) {
       onEditComplete();
@@ -207,9 +209,9 @@ function AddShoppingItemButton({
             <Label htmlFor="notes">メモ</Label>
             <Input
               id="notes"
-              value={newItem.notes}
+              value={newItem.notes || ""}
               onChange={(e) =>
-                setNewItem({ ...newItem, notes: e.target.value })
+                setNewItem({ ...newItem, notes: e.target.value || null })
               }
               placeholder="例: 低脂肪"
             />
@@ -232,83 +234,178 @@ export default function ShoppingList() {
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
   const [editingItem, setEditingItem] = useState<ShoppingItem | null>(null);
 
-  // ローカルストレージから買い物リストデータを読み込み
+  const { user, loading } = useAuth();
+
   useEffect(() => {
-    const savedItems = localStorage.getItem("shoppingItems");
-    if (savedItems) {
-      setShoppingItems(JSON.parse(savedItems));
+    const fetchShoppingItems = async () => {
+      if (!user) {
+        setShoppingItems([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('shopping_items')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error("Error fetching shopping items:", error);
+      } else {
+        setShoppingItems(data as ShoppingItem[]);
+      }
+    };
+
+    if (!loading) {
+      fetchShoppingItems();
     }
-  }, []);
+  }, [user, loading]);
 
-  // 買い物リストデータをローカルストレージに保存
-  useEffect(() => {
-    localStorage.setItem("shoppingItems", JSON.stringify(shoppingItems));
-  }, [shoppingItems]);
+  const unpurchasedItems = shoppingItems.filter((item) => !item.is_purchased);
+  const purchasedItems = shoppingItems.filter((item) => item.is_purchased);
 
-  const unpurchasedItems = shoppingItems.filter((item) => !item.isPurchased);
-  const purchasedItems = shoppingItems.filter((item) => item.isPurchased);
+  const handleSaveItem = async (itemData: Omit<ShoppingItem, "id" | "user_id" | "added_date">) => {
+    if (!user) return;
 
-  // アイテムを追加/編集
-  const handleSaveItem = (itemData: Omit<ShoppingItem, "id" | "addedDate">) => {
     if (editingItem) {
-      // 編集モード
-      setShoppingItems(
-        shoppingItems.map((item) =>
-          item.id === editingItem.id
-            ? { ...itemData, id: editingItem.id, addedDate: editingItem.addedDate }
-            : item
-        )
-      );
+      const { data, error } = await supabase
+        .from('shopping_items')
+        .update({
+          name: itemData.name,
+          category: itemData.category,
+          quantity: itemData.quantity,
+          unit: itemData.unit,
+          is_purchased: itemData.is_purchased,
+          notes: itemData.notes,
+        })
+        .eq('id', editingItem.id)
+        .eq('user_id', user.id)
+        .select();
+
+      if (error) {
+        console.error("Error updating shopping item:", error);
+      } else if (data && data.length > 0) {
+        setShoppingItems(
+          shoppingItems.map((item) =>
+            item.id === editingItem.id
+              ? (data[0] as ShoppingItem)
+              : item
+          )
+        );
+      }
     } else {
-      // 新規追加モード
-      const item: ShoppingItem = {
-        ...itemData,
-        id: Date.now().toString(),
-        addedDate: new Date().toISOString(),
-      };
-      setShoppingItems([...shoppingItems, item]);
+      const { data, error } = await supabase
+        .from('shopping_items')
+        .insert({
+          user_id: user.id,
+          name: itemData.name,
+          category: itemData.category,
+          quantity: itemData.quantity,
+          unit: itemData.unit,
+          is_purchased: itemData.is_purchased,
+          notes: itemData.notes,
+        })
+        .select();
+
+      if (error) {
+        console.error("Error creating shopping item:", error);
+      } else if (data && data.length > 0) {
+        setShoppingItems([...shoppingItems, data[0] as ShoppingItem]);
+      }
     }
   };
 
-  // アイテムを削除
-  const handleDeleteItem = (id: string) => {
-    setShoppingItems(shoppingItems.filter((item) => item.id !== id));
+  const handleDeleteItem = async (id: string) => {
+    if (!user) return;
+
+    if (confirm("このアイテムを削除しますか？")) {
+      const { error } = await supabase
+        .from('shopping_items')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error("Error deleting shopping item:", error);
+      } else {
+        setShoppingItems(shoppingItems.filter((item) => item.id !== id));
+      }
+    }
   };
 
-  // アイテムを編集
   const handleEditItem = (item: ShoppingItem) => {
     setEditingItem(item);
   };
 
-  // 編集完了
   const handleEditComplete = () => {
     setEditingItem(null);
   };
 
-  // 購入状況を切り替え
-  const togglePurchaseStatus = (id: string) => {
-    setShoppingItems(
-      shoppingItems.map((item) =>
-        item.id === id ? { ...item, isPurchased: !item.isPurchased } : item
-      )
-    );
+  const togglePurchaseStatus = async (id: string) => {
+    if (!user) return;
+
+    const itemToUpdate = shoppingItems.find(item => item.id === id);
+    if (!itemToUpdate) return;
+
+    const newPurchaseStatus = !itemToUpdate.is_purchased;
+
+    const { data, error } = await supabase
+      .from('shopping_items')
+      .update({ is_purchased: newPurchaseStatus })
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .select();
+
+    if (error) {
+      console.error("Error updating purchase status:", error);
+    } else if (data && data.length > 0) {
+      setShoppingItems(
+        shoppingItems.map((item) =>
+          item.id === id
+            ? { ...item, is_purchased: newPurchaseStatus }
+            : item
+        )
+      );
+    }
   };
 
-  // 購入済みアイテムを一括削除
-  const clearPurchasedItems = () => {
-    setShoppingItems(shoppingItems.filter((item) => !item.isPurchased));
+  const clearPurchasedItems = async () => {
+    if (!user) return;
+
+    if (confirm("購入済みのアイテムをすべて削除しますか？")) {
+      const { error } = await supabase
+        .from('shopping_items')
+        .delete()
+        .eq('is_purchased', true)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error("Error clearing purchased items:", error);
+      } else {
+        setShoppingItems(shoppingItems.filter((item) => !item.is_purchased));
+      }
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-[200px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">買い物リストを読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* 統計 */}
       <div className="flex items-center gap-6 text-sm text-gray-600">
         <div className="flex items-center gap-1">
           <Circle className={iconColorVariants({ theme: "shopping" })} />
           <span>未購入 {unpurchasedItems.length}品</span>
         </div>
         <div className="flex items-center gap-1">
-          <CheckCircle className="w-4 h-4 text-green-600" />
+          <CheckCircle className="w-4 h-4 text-gray-600" />
           <span>購入済み {purchasedItems.length}品</span>
         </div>
         <div className="flex items-center gap-1">
@@ -317,10 +414,9 @@ export default function ShoppingList() {
         </div>
       </div>
 
-      {/* アクション */}
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">買い物リスト</h2>
-        {shoppingItems.length > 0 && (
+        {user && shoppingItems.length > 0 && (
           <div className="flex gap-2">
             {purchasedItems.length > 0 && (
               <Button 
@@ -345,7 +441,6 @@ export default function ShoppingList() {
         )}
       </div>
 
-      {/* 買い物リスト */}
       <div className="space-y-4">
         {shoppingItems.length === 0 ? (
           <Card>
@@ -353,18 +448,20 @@ export default function ShoppingList() {
               <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-purple-300" />
               <h3 className="text-lg font-semibold mb-2">買い物リストが空です</h3>
               <p className="text-gray-600 mb-4">
-                最初のアイテムを追加して買い物を始めましょう
+                {user ? "最初のアイテムを追加して買い物を始めましょう" : "ログインして買い物リストを管理しましょう"}
               </p>
-              <AddShoppingItemButton 
-                onSave={handleSaveItem}
-                editingItem={editingItem}
-                onEditComplete={handleEditComplete}
-              >
-                <Button className={buttonVariants({ theme: "shopping" })}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  アイテムを追加
-                </Button>
-              </AddShoppingItemButton>
+              {user && (
+                <AddShoppingItemButton 
+                  onSave={handleSaveItem}
+                  editingItem={editingItem}
+                  onEditComplete={handleEditComplete}
+                >
+                  <Button className={buttonVariants({ theme: "shopping" })}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    アイテムを追加
+                  </Button>
+                </AddShoppingItemButton>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -423,20 +520,20 @@ export default function ShoppingList() {
             {/* 購入済みアイテム */}
             {purchasedItems.length > 0 && (
               <div className="space-y-2">
-                <h3 className="text-lg font-semibold text-green-600">
+                <h3 className="text-lg font-semibold text-gray-600">
                   購入済み ({purchasedItems.length}品)
                 </h3>
                 {purchasedItems.map((item) => (
-                  <Card key={item.id} className="border-green-200 bg-green-50 opacity-75">
+                  <Card key={item.id} className="border-gray-200 bg-gray-50 opacity-75">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3">
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => togglePurchaseStatus(item.id)}
-                          className="h-8 w-8 p-0 bg-green-100"
+                          className="h-8 w-8 p-0 bg-gray-100"
                         >
-                          <CheckCircle className="w-4 h-4 text-green-600" />
+                          <CheckCircle className="w-4 h-4 text-gray-600" />
                         </Button>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
@@ -469,7 +566,6 @@ export default function ShoppingList() {
         )}
       </div>
 
-      {/* 編集用のAddShoppingItemButton（非表示） */}
       <AddShoppingItemButton 
         onSave={handleSaveItem}
         editingItem={editingItem}

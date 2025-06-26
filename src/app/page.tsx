@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState, useEffect } from "react";
 import Image from "next/image";
@@ -31,11 +31,19 @@ import {
   Users,
   ExternalLink,
   AlertCircle,
+  Save,
+  List,
+  LogOut,
 } from "lucide-react";
-import IngredientsManagement from "@/components/ingredients-management";
+import IngredientsManagement, { Ingredient } from "@/components/ingredients-management";
 import ShoppingList from "@/components/shopping-list";
 import RecipeManagement from "@/components/recipe-management";
 import { gradientButtonVariants, headerVariants, backgroundVariants, headerButtonVariants, textColorVariants } from "@/lib/theme-variants";
+import { useAuth } from "@/contexts/AuthContext";
+import { AuthModal } from "@/components/auth/AuthModal";
+import { supabase } from '@/lib/supabase';
+import React from "react";
+import { Playlist as RecipePlaylist, Video as RecipeVideo } from '@/components/recipe-management'; // recipe-managementから型をインポート
 
 // Mock types - これらは実際のsupabaseタイプに置き換える必要があります
 interface YouTubeVideo {
@@ -49,18 +57,76 @@ interface YouTubeVideo {
   publishedAt?: string;
 }
 
-interface InventoryItem {
-  id: string;
-  ingredient_name: string;
-  quantity: number;
-  unit: string;
-  expiration_date?: string;
+// InventoryItemを削除し、Ingredientをインポート
+// interface InventoryItem {
+//   id: string;
+//   ingredient_name: string;
+//   quantity: number;
+//   unit: string;
+//   expiration_date?: string;
+// }
+
+// Playlist, PlaylistVideoの型定義はrecipe-management.tsxからインポートするため、ここから削除
+// interface PlaylistVideo { /* ... */ }
+// interface Playlist { /* ... */ }
+
+// VideoCardPropsも新しいプロップを受け取るように更新
+interface VideoCardProps {
+  video: YouTubeVideo;
+  playlists: RecipePlaylist[];
+  setPlaylists: React.Dispatch<React.SetStateAction<RecipePlaylist[]>>;
 }
 
 export default function JisuiSupport() {
   const [activeTab, setActiveTab] = useState("home");
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<YouTubeVideo[]>([]);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  
+  const { user, loading, signOut } = useAuth();
+  const [playlists, setPlaylists] = useState<RecipePlaylist[]>([]); // プレイリストの状態を管理
+
+  // Supabaseからプレイリストを読み込み
+  useEffect(() => {
+    const fetchPlaylists = async () => {
+      if (!user) { // ユーザーがログインしていない場合は何もしない
+        setPlaylists([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('playlists')
+        .select(`
+          *,
+          videos (*)
+        `)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error("Error fetching playlists in JisuiSupport:", error);
+      } else {
+        setPlaylists(data.map(p => ({
+          ...p,
+          videos: p.videos || []
+        })) as RecipePlaylist[]);
+      }
+    };
+
+    if (!loading) { // 認証状態のロードが完了したらフェッチを開始
+      fetchPlaylists();
+    }
+  }, [user, loading]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={backgroundVariants({ theme: "home" })}>
@@ -76,10 +142,13 @@ export default function JisuiSupport() {
             <Sheet open={searchOpen} onOpenChange={setSearchOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="sm" className={headerButtonVariants({ theme: "home" })}>
-                  <Search className="w-5 h-5" />
+                  <Search className="w-5 h-5 mr-1" />
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-full sm:w-[540px] overflow-y-auto px-4 sm:px-6 h-full">
+                <SheetHeader>
+                  <SheetTitle>レシピ検索</SheetTitle>
+                </SheetHeader>
                 <RecipeSearchSheet 
                   onResultsChange={setSearchResults} 
                   onClose={() => {
@@ -89,9 +158,28 @@ export default function JisuiSupport() {
                 />
               </SheetContent>
             </Sheet>
-            <Button variant="ghost" size="sm" className={headerButtonVariants({ theme: "home" })}>
-              <User className="w-5 h-5" />
-            </Button>
+            {user ? (
+              <div className="flex items-center gap-3">
+                <User className="w-5 h-5 mr-1" />
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className={headerButtonVariants({ theme: "home" })}
+                  onClick={signOut}
+                >
+                  <LogOut className="w-5 h-5 mr-1" />
+                </Button>
+              </div>
+            ) : (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className={headerButtonVariants({ theme: "home" })}
+                onClick={() => setAuthModalOpen(true)}
+              >
+                <User className="w-5 h-5" />
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -140,16 +228,21 @@ export default function JisuiSupport() {
               <section className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xl font-semibold flex items-center gap-2">
-                    <Users className="h-5 w-5 text-green-600" />
+                    <Users className="h-5 w-5 text-orange-600" />
                     検索結果
                   </h3>
-                  <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">
+                  <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200">
                     {searchResults.length}件見つかりました
                   </Badge>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {searchResults.map((video, index) => (
-                    <VideoCard key={`${video.videoId}-${index}`} video={video} />
+                    <VideoCard 
+                      key={`${video.videoId}-${index}`} 
+                      video={video} 
+                      playlists={playlists} // playlistsをVideoCardに渡す
+                      setPlaylists={setPlaylists} // setPlaylistsをVideoCardに渡す
+                    />
                   ))}
                 </div>
               </section>
@@ -191,6 +284,11 @@ export default function JisuiSupport() {
 
         </Tabs>
       </main>
+      
+      <AuthModal 
+        isOpen={authModalOpen} 
+        onClose={() => setAuthModalOpen(false)} 
+      />
     </div>
   );
 }
@@ -205,38 +303,36 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [ingredients, setIngredients] = useState<InventoryItem[]>([]);
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]); // 型をIngredientに変更
   const [selectedIngredientIds, setSelectedIngredientIds] = useState<string[]>([]);
 
-  // 実際の材料データをlocalStorageから取得
+  const { user, loading: authLoading } = useAuth(); // AuthContextからユーザーとローディング状態を取得
+
+  // Supabaseから材料データを取得
   useEffect(() => {
-    const savedIngredients = localStorage.getItem("ingredients");
-    if (savedIngredients) {
-      try {
-        const parsedIngredients = JSON.parse(savedIngredients);
-        // ingredients-managementコンポーネントの形式からInventoryItem形式に変換
-        const convertedIngredients = parsedIngredients.map((ingredient: {
-          id: string;
-          name: string;
-          quantity: number;
-          unit: string;
-          expiryDate: string;
-        }) => ({
-          id: ingredient.id,
-          ingredient_name: ingredient.name, // name -> ingredient_name
-          quantity: ingredient.quantity,
-          unit: ingredient.unit,
-          expiration_date: ingredient.expiryDate, // expiryDate -> expiration_date
-        }));
-        setIngredients(convertedIngredients);
-      } catch (error) {
-        console.error("材料データの読み込みに失敗しました:", error);
+    const fetchIngredients = async () => {
+      if (!user) {
         setIngredients([]);
+        return;
       }
-    } else {
-      setIngredients([]);
+
+      const { data, error } = await supabase
+        .from('ingredients')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error("Error fetching ingredients:", error);
+        setError("材料データの読み込みに失敗しました");
+      } else {
+        setIngredients(data as Ingredient[]);
+      }
+    };
+
+    if (!authLoading) { // 認証状態のロードが完了したらフェッチを開始
+      fetchIngredients();
     }
-  }, []);
+  }, [user, authLoading]);
 
   const toggleIngredientSelection = (ingredientId: string) => {
     setSelectedIngredientIds(prev =>
@@ -264,7 +360,7 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
 
     try {
       const selectedIngredients = getSelectedIngredients();
-      const ingredientNames = selectedIngredients.map(ing => ing.ingredient_name);
+      const ingredientNames = selectedIngredients.map(ing => ing.name);
       
       const searchTerms = [];
       if (query.trim()) {
@@ -311,7 +407,7 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
   const isPartiallySelected = selectedIngredientIds.length > 0 && selectedIngredientIds.length < ingredients.length;
 
   return (
-    <div className="space-y-8 mt-16 min-h-full">
+    <div className="space-y-8 mt-4 min-h-full">
       {/* 材料選択セクション */}
       {ingredients.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
@@ -319,15 +415,15 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
             <AccordionItem value="ingredients" className="border-none">
               <AccordionTrigger className="px-6 py-4 hover:no-underline">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <Utensils className="h-4 w-4 text-green-600" />
+                  <div className="p-2 bg-orange-100 rounded-lg">
+                    <Utensils className="h-4 w-4 text-orange-600" />
                   </div>
                   <div className="text-left">
                     <div className="font-semibold text-gray-800">使用する材料を選択</div>
                     <div className="text-sm text-gray-500">在庫の材料から選んでより具体的に検索</div>
                   </div>
                   {selectedIngredientIds.length > 0 && (
-                    <Badge variant="secondary" className="ml-auto bg-green-100 text-green-700 border-green-200">
+                    <Badge variant="secondary" className="ml-auto bg-orange-100 text-orange-700 border-orange-200">
                       {selectedIngredientIds.length}個選択中
                     </Badge>
                   )}
@@ -336,10 +432,8 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
               <AccordionContent className="px-6 pb-6">
                 <div className="space-y-4 pt-2">
                   {/* 全選択 */}
-                  <Button 
-                    variant="outline"
-                    size="lg"
-                    className="w-full justify-start space-x-4 p-5 h-auto bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-300"
+                  <div
+                    className="w-full justify-start space-x-4 p-5 h-auto bg-orange-50 border-gray-200 hover:bg-orange-100 hover:border-gray-300 rounded-lg flex items-center cursor-pointer transition-all duration-200"
                     onClick={() => toggleSelectAll()}
                   >
                     <div className="flex items-center justify-center w-5 h-5">
@@ -354,7 +448,7 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
                             }
                           }
                         }}
-                        className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 pointer-events-none"
+                        className="data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500 pointer-events-none"
                       />
                     </div>
                     <span className="flex-1 font-medium text-gray-700 text-left">
@@ -363,21 +457,19 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
                     <div className="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded">
                       {ingredients.length}個
                     </div>
-                  </Button>
+                  </div>
 
                   {/* 個別材料 */}
                   <div className="grid grid-cols-1 gap-3">
                     {ingredients.map((ingredient) => {
                       const isSelected = selectedIngredientIds.includes(ingredient.id);
                       return (
-                        <Button
+                        <div
                           key={ingredient.id}
-                          variant="outline"
-                          size="lg"
-                          className={`w-full justify-start space-x-4 p-5 h-auto group ${
+                          className={`w-full justify-start space-x-4 p-5 h-auto group rounded-lg flex items-center cursor-pointer transition-all duration-200 ${
                             isSelected 
-                              ? "border-green-400 bg-green-50 shadow-md scale-[1.02] ring-2 ring-green-100 hover:bg-green-50" 
-                              : "border-gray-200 bg-white hover:border-green-200 hover:bg-green-50 hover:shadow-sm"
+                              ? "border-orange-400 bg-orange-50 shadow-md scale-[1.02] ring-2 ring-orange-100 hover:bg-orange-50" 
+                              : "border-gray-200 bg-white hover:border-orange-200 hover:bg-orange-50 hover:shadow-sm"
                           }`}
                           onClick={() => toggleIngredientSelection(ingredient.id)}
                         >
@@ -385,11 +477,11 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
                             <Checkbox
                               id={ingredient.id}
                               checked={isSelected}
-                              className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 pointer-events-none"
+                              className="data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500 pointer-events-none"
                             />
                           </div>
                           <span className="flex-1 font-medium text-gray-700 text-left group-hover:text-gray-900">
-                            {ingredient.ingredient_name}
+                            {ingredient.name}
                           </span>
                           <div className="flex items-center gap-2">
                             {ingredient.quantity && ingredient.unit && (
@@ -398,12 +490,12 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
                               </div>
                             )}
                             {isSelected && (
-                              <div className="flex items-center justify-center w-7 h-7 bg-green-500 rounded-full shadow-sm">
+                              <div className="flex items-center justify-center w-7 h-7 bg-orange-500 rounded-full shadow-sm">
                                 <span className="text-white text-sm font-bold">✓</span>
                               </div>
                             )}
-                                                      </div>
-                          </Button>
+                          </div>
+                        </div>
                       );
                     })}
                   </div>
@@ -415,12 +507,12 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
       )}
 
       {/* 検索フォーム */}
-      <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100 shadow-sm">
+      <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-6 border border-orange-100 shadow-sm">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-3">
             <div className="flex items-center gap-2 mb-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Search className="h-5 w-5 text-green-600" />
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <Search className="h-5 w-5 text-orange-600" />
               </div>
               <div>
                 <Label htmlFor="search-input" className="text-lg font-semibold text-gray-800">
@@ -440,7 +532,7 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="例：和食、洋食、中華、イタリアン..."
-                className="h-12 pl-4 pr-4 text-base bg-white border-2 border-green-200 rounded-xl focus:border-green-400 focus:ring-4 focus:ring-green-100 transition-all duration-200 shadow-sm"
+                className="h-12 pl-4 pr-4 text-base bg-white border-2 border-orange-200 rounded-xl focus:border-orange-400 focus:ring-4 focus:ring-orange-100 transition-all duration-200 shadow-sm"
               />
               <div className="absolute inset-y-0 right-0 flex items-center pr-4">
                 <Search className="h-5 w-5 text-gray-400" />
@@ -451,7 +543,7 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
           <Button
             type="submit"
             disabled={loading}
-            className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            className="w-full h-12 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
           >
             {loading ? (
               <div className="flex items-center gap-2">
@@ -488,12 +580,135 @@ function RecipeSearchSheet({ onResultsChange, onClose }: RecipeSearchSheetProps)
 }
 
 // 動画カードコンポーネント
-interface VideoCardProps {
-  video: YouTubeVideo;
-}
-
-function VideoCard({ video }: VideoCardProps) {
+function VideoCard({ video, playlists, setPlaylists }: VideoCardProps) {
   const [showDescription, setShowDescription] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string>("");
+  const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
+  const [newPlaylistName, setNewPlaylistName] = useState("");
+  const [newPlaylistDescription, setNewPlaylistDescription] = useState("");
+
+  const { user } = useAuth(); // ここでuseAuthを呼び出す
+
+  // ローカルストレージからの読み込みと保存のuseEffectは削除
+  useEffect(() => {
+    // JisuiSupportでプレイリストをフェッチしているため、ここでは不要
+  }, []);
+
+  // 新しいプレイリストを作成 (Supabaseと連携)
+  const createNewPlaylist = async () => {
+    if (!newPlaylistName.trim()) {
+      return;
+    }
+    if (!user) return; // コンポーネントスコープのuserを使用
+
+    try {
+      const { data, error } = await supabase
+        .from('playlists')
+        .insert({
+          user_id: user.id,
+          name: newPlaylistName,
+          description: newPlaylistDescription || null,
+        })
+        .select();
+
+      if (error) {
+        console.error("Error creating playlist from VideoCard:", error);
+        return;
+      }
+      if (data && data.length > 0) {
+        const newPlaylist: RecipePlaylist = { ...data[0], videos: [] } as RecipePlaylist;
+        setPlaylists(prev => [...prev, newPlaylist]);
+        setSelectedPlaylistId(newPlaylist.id);
+        setShowCreatePlaylist(false);
+        setNewPlaylistName("");
+        setNewPlaylistDescription("");
+      }
+    } catch (err) {
+      console.error("Unexpected error creating playlist:", err);
+    }
+  };
+
+  // 動画をプレイリストに保存 (Supabaseと連携)
+  const saveToPlaylist = async () => {
+    if (!selectedPlaylistId) {
+      return;
+    }
+
+    if (!user) return; // コンポーネントスコープのuserを使用
+
+    const videoToSave = {
+      title: video.title || "YouTube動画",
+      url: `https://www.youtube.com/watch?v=${video.videoId}`,
+      thumbnail: video.thumbnailUrl || `https://img.youtube.com/vi/${video.videoId}/mqdefault.jpg`,
+      duration: formatDuration(video.duration) || null,
+    };
+
+    try {
+      // 重複チェックはSupabase側で行うか、事前にフェッチして確認
+      const { data: existingVideos, error: fetchError } = await supabase
+        .from('videos')
+        .select('url')
+        .eq('playlist_id', selectedPlaylistId)
+        .eq('url', videoToSave.url);
+      
+      if (fetchError) {
+        console.error("Error checking duplicate video:", fetchError);
+        return;
+      }
+
+      if (existingVideos && existingVideos.length > 0) {
+        alert("この動画はすでにプレイリストに存在します。");
+        setShowSaveDialog(false);
+        setSelectedPlaylistId("");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('videos')
+        .insert({
+          playlist_id: selectedPlaylistId,
+          user_id: user.id, // RLSのためにuser_idも保存
+          title: videoToSave.title,
+          url: videoToSave.url,
+          thumbnail: videoToSave.thumbnail,
+          duration: videoToSave.duration,
+        })
+        .select();
+
+      if (error) {
+        console.error("Error saving video to playlist:", error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const newVideo = data[0] as RecipeVideo;
+        // UIのプレイリストの状態を更新
+        setPlaylists(prevPlaylists =>
+          prevPlaylists.map(p =>
+            p.id === selectedPlaylistId
+              ? { ...p, videos: [...p.videos, newVideo], updated_at: new Date().toISOString() }
+              : p
+          )
+        );
+
+        // プレイリストのupdated_atをSupabaseでも更新
+        const { error: playlistUpdateError } = await supabase
+          .from('playlists')
+          .update({ updated_at: new Date().toISOString() })
+          .eq('id', selectedPlaylistId);
+
+        if (playlistUpdateError) {
+          console.error("Error updating playlist timestamp:", playlistUpdateError);
+        }
+      }
+    } catch (err) {
+      console.error("Unexpected error saving video:", err);
+    }
+
+    setShowSaveDialog(false);
+    setSelectedPlaylistId("");
+  };
 
   const formatDuration = (duration: string | undefined) => {
     if (!duration) return "0:00";
@@ -577,11 +792,19 @@ function VideoCard({ video }: VideoCardProps) {
               YouTube
             </a>
           </Button>
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={() => setShowSaveDialog(true)}
+            className="px-3"
+          >
+            <Save className="h-3 w-3" />
+          </Button>
         </div>
 
         <Dialog open={showDescription} onOpenChange={setShowDescription}>
           <DialogTrigger asChild>
-            <Button variant="ghost" size="sm" className="w-full justify-center hover:bg-green-50">
+            <Button variant="ghost" size="sm" className="w-full justify-center hover:bg-orange-50">
               <FileText className="h-3 w-3 mr-1" />
               詳細情報
             </Button>
@@ -597,7 +820,7 @@ function VideoCard({ video }: VideoCardProps) {
                 <div className="p-4 space-y-4">
                   <div className="space-y-3">
                     <h4 className="font-semibold text-sm flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-green-600" />
+                      <FileText className="h-4 w-4 text-orange-600" />
                       動画の説明
                     </h4>
                     {video.description ? (
@@ -618,6 +841,120 @@ function VideoCard({ video }: VideoCardProps) {
                 </div>
               </ScrollArea>
             </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* 保存ダイアログ */}
+        <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Save className="h-5 w-5 text-orange-600" />
+                プレイリストに保存
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>保存先のプレイリストを選択</Label>
+                {playlists.length === 0 ? (
+                  <div className="text-center py-6 text-gray-500">
+                    <List className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p className="mb-4">プレイリストがありません</p>
+                    <Button 
+                      onClick={() => setShowCreatePlaylist(true)}
+                      className="bg-orange-600 hover:bg-orange-700 text-white"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      新しいプレイリストを作成
+                    </Button>
+                  </div>
+                ) : (
+                  <ScrollArea className="h-[200px]">
+                    <div className="grid gap-2">
+                      {playlists.map((playlist) => (
+                        <Button
+                          key={playlist.id}
+                          variant={selectedPlaylistId === playlist.id ? "default" : "outline"}
+                          onClick={() => setSelectedPlaylistId(playlist.id)}
+                          className="w-full justify-start"
+                        >
+                          {playlist.name} ({playlist.videos.length}本)
+                        </Button>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+                
+                {/* 既存プレイリストがある場合の新規作成ボタン */}
+                {playlists.length > 0 && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowCreatePlaylist(true)}
+                    className="w-full mt-2"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    新しいプレイリストを作成
+                  </Button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowSaveDialog(false)}
+                  className="flex-1"
+                >
+                  キャンセル
+                </Button>
+                <Button 
+                  onClick={saveToPlaylist}
+                  disabled={!selectedPlaylistId}
+                  className="flex-1"
+                >
+                  保存
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* 新しいプレイリスト作成ダイアログ */}
+        <Dialog open={showCreatePlaylist} onOpenChange={setShowCreatePlaylist}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>新しいプレイリストを作成</DialogTitle>
+              <DialogDescription>
+                動画を保存するための新しいプレイリストを作成します。
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="newPlaylistName">プレイリスト名</Label>
+                <Input
+                  id="newPlaylistName"
+                  value={newPlaylistName}
+                  onChange={(e) => setNewPlaylistName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="newPlaylistDescription">説明 (任意)</Label>
+                <textarea
+                  id="newPlaylistDescription"
+                  value={newPlaylistDescription}
+                  onChange={(e) => setNewPlaylistDescription(e.target.value)}
+                  rows={3}
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowCreatePlaylist(false)}>
+                キャンセル
+              </Button>
+              <Button onClick={createNewPlaylist}>
+                作成
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </CardContent>

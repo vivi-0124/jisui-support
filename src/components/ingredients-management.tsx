@@ -31,15 +31,19 @@ import {
   Edit,
 } from "lucide-react";
 import { buttonVariants, iconColorVariants } from "@/lib/theme-variants";
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface Ingredient {
-  id: string;
+export interface Ingredient {
+  id: string; // uuid
+  user_id: string; // 追加
   name: string;
   category: string;
   quantity: number;
   unit: string;
-  expiryDate: string;
-  location: string;
+  expiry_date: string | null; // expiryDateをexpiry_dateに変更し、null許容
+  location: string | null; // null許容
+  created_at: string; // 追加
 }
 
 const categories = [
@@ -57,7 +61,7 @@ const units = ["個", "g", "kg", "ml", "L", "本", "枚", "袋", "パック"];
 const locations = ["冷蔵庫", "冷凍庫", "常温", "野菜室"];
 
 interface AddIngredientButtonProps {
-  onSave: (ingredient: Omit<Ingredient, "id">) => void;
+  onSave: (ingredient: Omit<Ingredient, "id" | "user_id" | "created_at">) => void; // 型定義を更新
   editingIngredient?: Ingredient | null;
   onEditComplete?: () => void;
   children: React.ReactNode;
@@ -70,16 +74,15 @@ function AddIngredientButton({
   children 
 }: AddIngredientButtonProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newIngredient, setNewIngredient] = useState<Omit<Ingredient, "id">>({
+  const [newIngredient, setNewIngredient] = useState<Omit<Ingredient, "id" | "user_id" | "created_at">>({
     name: "",
     category: "",
     quantity: 1,
     unit: "",
-    expiryDate: "",
-    location: "",
+    expiry_date: null,
+    location: null,
   });
 
-  // 編集モードの時に初期値をセット
   useEffect(() => {
     if (editingIngredient) {
       setNewIngredient({
@@ -87,7 +90,7 @@ function AddIngredientButton({
         category: editingIngredient.category,
         quantity: editingIngredient.quantity,
         unit: editingIngredient.unit,
-        expiryDate: editingIngredient.expiryDate,
+        expiry_date: editingIngredient.expiry_date,
         location: editingIngredient.location,
       });
       setIsDialogOpen(true);
@@ -114,8 +117,8 @@ function AddIngredientButton({
       category: "",
       quantity: 1,
       unit: "",
-      expiryDate: "",
-      location: "",
+      expiry_date: null,
+      location: null,
     });
     if (editingIngredient && onEditComplete) {
       onEditComplete();
@@ -209,11 +212,11 @@ function AddIngredientButton({
             <Input
               id="expiry"
               type="date"
-              value={newIngredient.expiryDate}
+              value={newIngredient.expiry_date || ""}
               onChange={(e) =>
                 setNewIngredient({
                   ...newIngredient,
-                  expiryDate: e.target.value,
+                  expiry_date: e.target.value || null,
                 })
               }
             />
@@ -221,9 +224,9 @@ function AddIngredientButton({
           <div>
             <Label htmlFor="location">保存場所</Label>
             <Select
-              value={newIngredient.location}
+              value={newIngredient.location || ""}
               onValueChange={(value) =>
-                setNewIngredient({ ...newIngredient, location: value })
+                setNewIngredient({ ...newIngredient, location: value || null })
               }
             >
               <SelectTrigger>
@@ -255,24 +258,41 @@ function AddIngredientButton({
 export default function IngredientsManagement() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
+  
+  const { user, loading } = useAuth();
 
-  // ローカルストレージから材料データを読み込み
   useEffect(() => {
-    const savedIngredients = localStorage.getItem("ingredients");
-    if (savedIngredients) {
-      setIngredients(JSON.parse(savedIngredients));
+    const fetchIngredients = async () => {
+      if (!user) {
+        setIngredients([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('ingredients')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error("Error fetching ingredients:", error);
+      } else {
+        setIngredients(data as Ingredient[]);
+      }
+    };
+
+    if (!loading) {
+      fetchIngredients();
     }
-  }, []);
+  }, [user, loading]);
 
-  // 材料データをローカルストレージに保存
-  useEffect(() => {
-    localStorage.setItem("ingredients", JSON.stringify(ingredients));
-  }, [ingredients]);
+  const getExpiryStatus = (expiryDate: string | null) => {
+    if (!expiryDate) return "fresh";
 
-  // 期限切れと期限間近の材料を計算
-  const getExpiryStatus = (expiryDate: string) => {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const expiry = new Date(expiryDate);
+    expiry.setHours(0, 0, 0, 0);
+
     const diffTime = expiry.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
@@ -282,52 +302,103 @@ export default function IngredientsManagement() {
   };
 
   const expiringIngredients = ingredients.filter(
-    (ingredient) => getExpiryStatus(ingredient.expiryDate) === "expiring"
+    (ingredient) => getExpiryStatus(ingredient.expiry_date) === "expiring"
   );
 
   const expiredIngredients = ingredients.filter(
-    (ingredient) => getExpiryStatus(ingredient.expiryDate) === "expired"
+    (ingredient) => getExpiryStatus(ingredient.expiry_date) === "expired"
   );
 
-  // 材料を追加/編集
-  const handleSaveIngredient = (ingredientData: Omit<Ingredient, "id">) => {
+  const handleSaveIngredient = async (ingredientData: Omit<Ingredient, "id" | "user_id" | "created_at">) => {
+    if (!user) return;
+
     if (editingIngredient) {
-      // 編集モード
-      setIngredients(
-        ingredients.map((ingredient) =>
-          ingredient.id === editingIngredient.id
-            ? { ...ingredientData, id: editingIngredient.id }
-            : ingredient
-        )
-      );
+      const { data, error } = await supabase
+        .from('ingredients')
+        .update({
+          name: ingredientData.name,
+          category: ingredientData.category,
+          quantity: ingredientData.quantity,
+          unit: ingredientData.unit,
+          expiry_date: ingredientData.expiry_date,
+          location: ingredientData.location,
+        })
+        .eq('id', editingIngredient.id)
+        .eq('user_id', user.id)
+        .select();
+
+      if (error) {
+        console.error("Error updating ingredient:", error);
+      } else if (data && data.length > 0) {
+        setIngredients(
+          ingredients.map((item) =>
+            item.id === editingIngredient.id
+              ? (data[0] as Ingredient) // 明示的にIngredientとしてキャスト
+              : item
+          )
+        );
+      }
     } else {
-      // 新規追加モード
-      const ingredient: Ingredient = {
-        ...ingredientData,
-        id: Date.now().toString(),
-      };
-      setIngredients([...ingredients, ingredient]);
+      const { data, error } = await supabase
+        .from('ingredients')
+        .insert({
+          user_id: user.id,
+          name: ingredientData.name,
+          category: ingredientData.category,
+          quantity: ingredientData.quantity,
+          unit: ingredientData.unit,
+          expiry_date: ingredientData.expiry_date,
+          location: ingredientData.location,
+        })
+        .select();
+
+      if (error) {
+        console.error("Error creating ingredient:", error);
+      } else if (data && data.length > 0) {
+        setIngredients([...ingredients, data[0] as Ingredient]); // 明示的にIngredientとしてキャスト
+      }
     }
   };
 
-  // 材料を削除
-  const handleDeleteIngredient = (id: string) => {
-    setIngredients(ingredients.filter((ingredient) => ingredient.id !== id));
+  const handleDeleteIngredient = async (id: string) => {
+    if (!user) return;
+
+    if (confirm("この材料を削除しますか？")) {
+      const { error } = await supabase
+        .from('ingredients')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error("Error deleting ingredient:", error);
+      } else {
+        setIngredients(ingredients.filter((ingredient) => ingredient.id !== id));
+      }
+    }
   };
 
-  // 材料を編集
   const handleEditIngredient = (ingredient: Ingredient) => {
     setEditingIngredient(ingredient);
   };
 
-  // 編集完了
   const handleEditComplete = () => {
     setEditingIngredient(null);
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-[200px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">材料データを読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* 統計 */}
       <div className="flex items-center gap-6 text-sm text-gray-600">
         <div className="flex items-center gap-1">
           <Package className={iconColorVariants({ theme: "ingredients" })} />
@@ -343,10 +414,9 @@ export default function IngredientsManagement() {
         </div>
       </div>
 
-      {/* 材料追加ボタン */}
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">材料一覧</h2>
-        {ingredients.length > 0 && (
+        {user && ingredients.length > 0 && (
           <AddIngredientButton 
             onSave={handleSaveIngredient}
             editingIngredient={editingIngredient}
@@ -360,7 +430,6 @@ export default function IngredientsManagement() {
         )}
       </div>
 
-      {/* 材料リスト */}
       <div className="grid gap-4">
         {ingredients.length === 0 ? (
           <Card>
@@ -368,23 +437,25 @@ export default function IngredientsManagement() {
               <Package className="w-16 h-16 mx-auto mb-4 text-green-300" />
               <h3 className="text-lg font-semibold mb-2">材料がありません</h3>
               <p className="text-gray-600 mb-4">
-                最初の材料を追加して管理を始めましょう
+                {user ? "最初の材料を追加して管理を始めましょう" : "ログインして材料を管理しましょう"}
               </p>
-              <AddIngredientButton 
-                onSave={handleSaveIngredient}
-                editingIngredient={editingIngredient}
-                onEditComplete={handleEditComplete}
-              >
-                <Button className={buttonVariants({ theme: "ingredients" })}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  材料を追加
-                </Button>
-              </AddIngredientButton>
+              {user && (
+                <AddIngredientButton 
+                  onSave={handleSaveIngredient}
+                  editingIngredient={editingIngredient}
+                  onEditComplete={handleEditComplete}
+                >
+                  <Button className={buttonVariants({ theme: "ingredients" })}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    材料を追加
+                  </Button>
+                </AddIngredientButton>
+              )}
             </CardContent>
           </Card>
         ) : (
           ingredients.map((ingredient) => {
-            const expiryStatus = getExpiryStatus(ingredient.expiryDate);
+            const expiryStatus = getExpiryStatus(ingredient.expiry_date);
             return (
               <Card key={ingredient.id}>
                 <CardContent className="p-4">
@@ -407,9 +478,9 @@ export default function IngredientsManagement() {
                           数量: {ingredient.quantity}
                           {ingredient.unit}
                         </div>
-                        {ingredient.expiryDate && (
+                        {ingredient.expiry_date && (
                           <div>
-                            消費期限: {ingredient.expiryDate}
+                            消費期限: {ingredient.expiry_date}
                           </div>
                         )}
                         {ingredient.location && (
@@ -441,7 +512,6 @@ export default function IngredientsManagement() {
         )}
       </div>
 
-      {/* 編集用のAddIngredientButton（非表示） */}
       <AddIngredientButton 
         onSave={handleSaveIngredient}
         editingIngredient={editingIngredient}

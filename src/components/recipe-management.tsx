@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -15,122 +15,90 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import {
   Plus,
-  BookOpen,
-  Clock,
-  Users,
+  List,
   Trash2,
   Edit,
-  Heart,
-  Filter,
+  MoreVertical,
+  Clock,
+  Video,
 } from "lucide-react";
-import { buttonVariants, iconColorVariants, textColorVariants, cardVariants } from "@/lib/theme-variants";
+import { buttonVariants, iconColorVariants, cardVariants } from "@/lib/theme-variants";
+import Image from "next/image";
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface Recipe {
+export interface Video {
   id: string;
-  name: string;
-  category: string;
-  ingredients: string[];
-  instructions: string[];
-  cookingTime: number;
-  servings: number;
-  difficulty: "簡単" | "普通" | "難しい";
-  isFavorite: boolean;
-  createdDate: string;
+  title: string;
+  url: string;
+  thumbnail: string;
+  duration?: string;
+  added_at: string;
 }
 
-const categories = [
-  "和食",
-  "洋食",
-  "中華",
-  "イタリアン",
-  "スープ",
-  "サラダ",
-  "デザート",
-  "おつまみ",
-  "その他",
-];
+export interface Playlist {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  videos: Video[];
+  created_at: string;
+  updated_at: string;
+}
 
-const difficultyOptions = ["簡単", "普通", "難しい"] as const;
-
-interface AddRecipeButtonProps {
-  onSave: (recipe: Omit<Recipe, "id" | "createdDate">) => void;
-  editingRecipe?: Recipe | null;
+interface AddPlaylistButtonProps {
+  onSave: (playlist: Omit<Playlist, "id" | "user_id" | "created_at" | "updated_at">) => void;
+  editingPlaylist?: Playlist | null;
   onEditComplete?: () => void;
   children: React.ReactNode;
 }
 
-function AddRecipeButton({ 
+function AddPlaylistButton({ 
   onSave, 
-  editingRecipe, 
+  editingPlaylist, 
   onEditComplete, 
   children 
-}: AddRecipeButtonProps) {
+}: AddPlaylistButtonProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newRecipe, setNewRecipe] = useState<Omit<Recipe, "id" | "createdDate">>({
+  const [newPlaylist, setNewPlaylist] = useState<Omit<Playlist, "id" | "user_id" | "created_at" | "updated_at">>({
     name: "",
-    category: "",
-    ingredients: [""],
-    instructions: [""],
-    cookingTime: 30,
-    servings: 2,
-    difficulty: "普通",
-    isFavorite: false,
+    description: null,
+    videos: [],
   });
 
-  // 編集モードの時に初期値をセット
   useEffect(() => {
-    if (editingRecipe) {
-      setNewRecipe({
-        name: editingRecipe.name,
-        category: editingRecipe.category,
-        ingredients: editingRecipe.ingredients,
-        instructions: editingRecipe.instructions,
-        cookingTime: editingRecipe.cookingTime,
-        servings: editingRecipe.servings,
-        difficulty: editingRecipe.difficulty,
-        isFavorite: editingRecipe.isFavorite,
+    if (editingPlaylist) {
+      setNewPlaylist({
+        name: editingPlaylist.name,
+        description: editingPlaylist.description,
+        videos: editingPlaylist.videos,
       });
       setIsDialogOpen(true);
     }
-  }, [editingRecipe]);
+  }, [editingPlaylist]);
 
-  const handleSaveRecipe = () => {
-    if (!newRecipe.name || !newRecipe.category) {
-      alert("必須項目を入力してください");
+  const handleSavePlaylist = () => {
+    if (!newPlaylist.name.trim()) {
+      alert("プレイリスト名を入力してください");
       return;
     }
 
-    // 空の材料と手順を除外
-    const filteredIngredients = newRecipe.ingredients.filter(
-      (ingredient) => ingredient.trim() !== ""
-    );
-    const filteredInstructions = newRecipe.instructions.filter(
-      (instruction) => instruction.trim() !== ""
-    );
-
-    if (filteredIngredients.length === 0) {
-      alert("材料を最低1つ入力してください");
-      return;
-    }
-
-    const recipeData = {
-      ...newRecipe,
-      ingredients: filteredIngredients,
-      instructions: filteredInstructions,
-    };
-
-    onSave(recipeData);
+    onSave(newPlaylist);
     handleCloseDialog();
-    if (editingRecipe && onEditComplete) {
+    if (editingPlaylist && onEditComplete) {
       onEditComplete();
     }
   };
@@ -138,50 +106,17 @@ function AddRecipeButton({
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     resetForm();
-    if (editingRecipe && onEditComplete) {
+    if (editingPlaylist && onEditComplete) {
       onEditComplete();
     }
   };
 
   const resetForm = () => {
-    setNewRecipe({
+    setNewPlaylist({
       name: "",
-      category: "",
-      ingredients: [""],
-      instructions: [""],
-      cookingTime: 30,
-      servings: 2,
-      difficulty: "普通",
-      isFavorite: false,
+      description: null,
+      videos: [],
     });
-  };
-
-  const addIngredient = () => {
-    setNewRecipe({
-      ...newRecipe,
-      ingredients: [...newRecipe.ingredients, ""],
-    });
-  };
-
-  const removeIngredient = (index: number) => {
-    if (newRecipe.ingredients.length > 1) {
-      const newIngredients = newRecipe.ingredients.filter((_, i) => i !== index);
-      setNewRecipe({ ...newRecipe, ingredients: newIngredients });
-    }
-  };
-
-  const addInstruction = () => {
-    setNewRecipe({
-      ...newRecipe,
-      instructions: [...newRecipe.instructions, ""],
-    });
-  };
-
-  const removeInstruction = (index: number) => {
-    if (newRecipe.instructions.length > 1) {
-      const newInstructions = newRecipe.instructions.filter((_, i) => i !== index);
-      setNewRecipe({ ...newRecipe, instructions: newInstructions });
-    }
   };
 
   return (
@@ -189,173 +124,47 @@ function AddRecipeButton({
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            {editingRecipe ? "レシピを編集" : "新しいレシピを追加"}
+            {editingPlaylist ? "プレイリストを編集" : "新しいプレイリストを作成"}
           </DialogTitle>
           <DialogDescription>
-            レシピの詳細情報を入力してください。
+            プレイリストの詳細情報を入力してください。
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          {/* 基本情報 */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="name">レシピ名 *</Label>
-              <Input
-                id="name"
-                value={newRecipe.name}
-                onChange={(e) =>
-                  setNewRecipe({ ...newRecipe, name: e.target.value })
-                }
-                placeholder="例: 親子丼"
-              />
-            </div>
-            <div>
-              <Label htmlFor="category">カテゴリ *</Label>
-              <Select
-                value={newRecipe.category}
-                onValueChange={(value) =>
-                  setNewRecipe({ ...newRecipe, category: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="カテゴリを選択" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="cookingTime">調理時間（分）</Label>
-              <Input
-                id="cookingTime"
-                type="number"
-                value={newRecipe.cookingTime}
-                onChange={(e) =>
-                  setNewRecipe({
-                    ...newRecipe,
-                    cookingTime: parseInt(e.target.value) || 30,
-                  })
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="servings">人数</Label>
-              <Input
-                id="servings"
-                type="number"
-                value={newRecipe.servings}
-                onChange={(e) =>
-                  setNewRecipe({
-                    ...newRecipe,
-                    servings: parseInt(e.target.value) || 2,
-                  })
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="difficulty">難易度</Label>
-              <Select
-                value={newRecipe.difficulty}
-                onValueChange={(value: typeof newRecipe.difficulty) =>
-                  setNewRecipe({ ...newRecipe, difficulty: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {difficultyOptions.map((difficulty) => (
-                    <SelectItem key={difficulty} value={difficulty}>
-                      {difficulty}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* 材料 */}
           <div>
-            <div className="flex justify-between items-center mb-2">
-              <Label>材料 *</Label>
-              <Button type="button" variant="outline" size="sm" onClick={addIngredient}>
-                <Plus className="w-3 h-3 mr-1" />
-                追加
-              </Button>
-            </div>
-            {newRecipe.ingredients.map((ingredient, index) => (
-              <div key={index} className="flex gap-2 mb-2">
-                <Input
-                  value={ingredient}
-                  onChange={(e) => {
-                    const newIngredients = [...newRecipe.ingredients];
-                    newIngredients[index] = e.target.value;
-                    setNewRecipe({ ...newRecipe, ingredients: newIngredients });
-                  }}
-                  placeholder="例: 鶏もも肉 200g"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => removeIngredient(index)}
-                >
-                  <Trash2 className="w-3 h-3" />
-                </Button>
-              </div>
-            ))}
+            <Label htmlFor="name">プレイリスト名 *</Label>
+            <Input
+              id="name"
+              value={newPlaylist.name}
+              onChange={(e) =>
+                setNewPlaylist({ ...newPlaylist, name: e.target.value })
+              }
+              placeholder="例: お気に入りの料理動画"
+            />
           </div>
-
-          {/* 手順 */}
           <div>
-            <div className="flex justify-between items-center mb-2">
-              <Label>調理手順</Label>
-              <Button type="button" variant="outline" size="sm" onClick={addInstruction}>
-                <Plus className="w-3 h-3 mr-1" />
-                追加
-              </Button>
-            </div>
-            {newRecipe.instructions.map((instruction, index) => (
-              <div key={index} className="flex gap-2 mb-2">
-                <div className="text-sm text-gray-500 mt-2 w-6">{index + 1}.</div>
-                <Input
-                  value={instruction}
-                  onChange={(e) => {
-                    const newInstructions = [...newRecipe.instructions];
-                    newInstructions[index] = e.target.value;
-                    setNewRecipe({ ...newRecipe, instructions: newInstructions });
-                  }}
-                  placeholder="調理手順を入力"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => removeInstruction(index)}
-                >
-                  <Trash2 className="w-3 h-3" />
-                </Button>
-              </div>
-            ))}
+            <Label htmlFor="description">説明</Label>
+            <textarea
+              id="description"
+              value={newPlaylist.description || ""}
+              onChange={(e) =>
+                setNewPlaylist({ ...newPlaylist, description: e.target.value })
+              }
+              placeholder="プレイリストの説明を入力してください"
+              rows={3}
+              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            />
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={handleCloseDialog}>
             キャンセル
           </Button>
-          <Button onClick={handleSaveRecipe} className={buttonVariants({ theme: "recipes" })}>
-            {editingRecipe ? "更新" : "追加"}
+          <Button onClick={handleSavePlaylist} className={buttonVariants({ theme: "recipes" })}>
+            {editingPlaylist ? "更新" : "作成"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -363,388 +172,506 @@ function AddRecipeButton({
   );
 }
 
-export default function RecipeManagement() {
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
+interface AddVideoDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onAddVideo: (video: Omit<Video, "id" | "added_at">) => void;
+}
 
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedDifficulty, setSelectedDifficulty] = useState("all");
-  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
+function AddVideoDialog({ isOpen, onClose, onAddVideo }: AddVideoDialogProps) {
+  const [videoUrl, setVideoUrl] = useState("");
+  const [videoTitle, setVideoTitle] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  // ローカルストレージからレシピデータを読み込み
-  useEffect(() => {
-    const savedRecipes = localStorage.getItem("recipes");
-    if (savedRecipes) {
-      setRecipes(JSON.parse(savedRecipes));
+  const extractVideoId = (url: string) => {
+    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+  };
+
+  const fetchVideoInfo = async (url: string) => {
+    const videoId = extractVideoId(url);
+    if (!videoId) {
+      throw new Error("有効なYouTube URLを入力してください");
     }
-  }, []);
 
-  // レシピデータをローカルストレージに保存
-  useEffect(() => {
-    localStorage.setItem("recipes", JSON.stringify(recipes));
-  }, [recipes]);
-
-  // フィルタリングされたレシピ
-  const filteredRecipes = recipes.filter((recipe) => {
-    const matchesCategory =
-      selectedCategory === "all" || recipe.category === selectedCategory;
-    
-    const matchesDifficulty =
-      selectedDifficulty === "all" || recipe.difficulty === selectedDifficulty;
-    
-    const matchesFavorites = !showOnlyFavorites || recipe.isFavorite;
-    
-    return matchesCategory && matchesDifficulty && matchesFavorites;
-  });
-
-  const favoriteRecipes = recipes.filter((recipe) => recipe.isFavorite);
-
-  // レシピを追加/編集
-  const handleSaveRecipe = (recipeData: Omit<Recipe, "id" | "createdDate">) => {
-    if (editingRecipe) {
-      // 編集モード
-      setRecipes(
-        recipes.map((recipe) =>
-          recipe.id === editingRecipe.id
-            ? { ...recipeData, id: editingRecipe.id, createdDate: editingRecipe.createdDate }
-            : recipe
-        )
-      );
-    } else {
-      // 新規追加モード
-      const recipe: Recipe = {
-        ...recipeData,
-        id: Date.now().toString(),
-        createdDate: new Date().toISOString(),
+    try {
+      const response = await fetch(`/api/youtube/search?videoId=${videoId}`);
+      if (!response.ok) {
+        throw new Error("動画情報の取得に失敗しました");
+      }
+      const data = await response.json();
+      return data;
+    } catch {
+      // APIが利用できない場合のフォールバック
+      return {
+        title: videoTitle || "YouTube動画",
+        thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+        duration: "不明",
       };
-      setRecipes([...recipes, recipe]);
     }
   };
 
-  // レシピを削除
-  const handleDeleteRecipe = (id: string) => {
-    if (confirm("このレシピを削除しますか？")) {
-      setRecipes(recipes.filter((recipe) => recipe.id !== id));
+  const handleAddVideo = async () => {
+    if (!videoUrl.trim()) {
+      alert("YouTube URLを入力してください");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const videoInfo = await fetchVideoInfo(videoUrl);
+      onAddVideo({
+        title: videoInfo.title,
+        url: videoUrl,
+        thumbnail: videoInfo.thumbnail,
+        duration: videoInfo.duration,
+      });
+      setVideoUrl("");
+      setVideoTitle("");
+      onClose();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "エラーが発生しました");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // レシピを編集
-  const handleEditRecipe = (recipe: Recipe) => {
-    setEditingRecipe(recipe);
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>動画を追加</DialogTitle>
+          <DialogDescription>
+            YouTube URLを入力して動画をプレイリストに追加してください。
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div>
+            <Label htmlFor="videoUrl">YouTube URL *</Label>
+            <Input
+              id="videoUrl"
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              placeholder="https://www.youtube.com/watch?v=..."
+            />
+          </div>
+          <div>
+            <Label htmlFor="videoTitle">動画タイトル（オプション）</Label>
+            <Input
+              id="videoTitle"
+              value={videoTitle}
+              onChange={(e) => setVideoTitle(e.target.value)}
+              placeholder="動画のタイトルを入力"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            キャンセル
+          </Button>
+          <Button 
+            onClick={handleAddVideo} 
+            disabled={isLoading}
+            className={buttonVariants({ theme: "recipes" })}
+          >
+            {isLoading ? "追加中..." : "追加"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export default function PlaylistManagement() {
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
+  const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
+  const [isAddVideoDialogOpen, setIsAddVideoDialogOpen] = useState(false);
+  
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    const fetchPlaylists = async () => {
+      if (!user) {
+        setPlaylists([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('playlists')
+        .select(`
+          *,
+          videos (*)
+        `)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error("Error fetching playlists:", error);
+      } else {
+        setPlaylists(data.map(p => ({
+          ...p,
+          videos: p.videos || []
+        })) as Playlist[]);
+      }
+    };
+
+    if (!loading) {
+      fetchPlaylists();
+    }
+  }, [user, loading]);
+
+  const totalVideos = playlists.reduce((total, playlist) => total + playlist.videos.length, 0);
+
+  const handleSavePlaylist = async (playlistData: Omit<Playlist, "id" | "user_id" | "created_at" | "updated_at">) => {
+    if (!user) return;
+
+    if (editingPlaylist) {
+      const { data, error } = await supabase
+        .from('playlists')
+        .update({
+          name: playlistData.name,
+          description: playlistData.description,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', editingPlaylist.id)
+        .select();
+
+      if (error) {
+        console.error("Error updating playlist:", error);
+      } else if (data && data.length > 0) {
+        setPlaylists(playlists.map(p => p.id === editingPlaylist.id ? { ...p, ...data[0], videos: p.videos } : p));
+        if (selectedPlaylist?.id === editingPlaylist.id) {
+          setSelectedPlaylist(prev => prev ? { ...prev, ...data[0], videos: prev.videos } : null);
+        }
+      }
+    } else {
+      const { data, error } = await supabase
+        .from('playlists')
+        .insert({
+          user_id: user.id,
+          name: playlistData.name,
+          description: playlistData.description,
+        })
+        .select();
+
+      if (error) {
+        console.error("Error creating playlist:", error);
+      } else if (data && data.length > 0) {
+        setPlaylists([...playlists, { ...data[0], videos: [] }]);
+      }
+    }
   };
 
-  // 編集完了
+  const handleDeletePlaylist = async (id: string) => {
+    if (!user) return;
+
+    if (confirm("このプレイリストを削除しますか？（関連する動画も削除されます）")) {
+      const { error } = await supabase
+        .from('playlists')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error("Error deleting playlist:", error);
+      } else {
+        setPlaylists(playlists.filter((playlist) => playlist.id !== id));
+        if (selectedPlaylist?.id === id) {
+          setSelectedPlaylist(null);
+        }
+      }
+    }
+  };
+
+  const handleEditPlaylist = (playlist: Playlist) => {
+    setEditingPlaylist(playlist);
+  };
+
   const handleEditComplete = () => {
-    setEditingRecipe(null);
+    setEditingPlaylist(null);
   };
 
-  // お気に入りを切り替え
-  const toggleFavorite = (id: string) => {
-    setRecipes(
-      recipes.map((recipe) =>
-        recipe.id === id ? { ...recipe, isFavorite: !recipe.isFavorite } : recipe
-      )
-    );
+  const handleAddVideo = async (videoData: Omit<Video, "id" | "added_at">) => {
+    if (!selectedPlaylist || !user) return;
+
+    const { data, error } = await supabase
+      .from('videos')
+      .insert({
+        playlist_id: selectedPlaylist.id,
+        user_id: user.id,
+        title: videoData.title,
+        url: videoData.url,
+        thumbnail: videoData.thumbnail,
+        duration: videoData.duration || null,
+      })
+      .select();
+
+    if (error) {
+      console.error("Error adding video:", error);
+    } else if (data && data.length > 0) {
+      const newVideo = data[0] as Video;
+      const updatedPlaylist = {
+        ...selectedPlaylist,
+        videos: [...selectedPlaylist.videos, newVideo],
+        updated_at: new Date().toISOString(),
+      };
+
+      setPlaylists(playlists.map(p => p.id === selectedPlaylist.id ? updatedPlaylist : p));
+      setSelectedPlaylist(updatedPlaylist);
+
+      const { error: playlistUpdateError } = await supabase
+        .from('playlists')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', selectedPlaylist.id);
+
+      if (playlistUpdateError) {
+        console.error("Error updating playlist timestamp:", playlistUpdateError);
+      }
+    }
   };
 
-  // フィルターをクリア
-  const clearFilters = () => {
-    setSelectedCategory("all");
-    setSelectedDifficulty("all");
-    setShowOnlyFavorites(false);
+  const handleDeleteVideo = async (playlistId: string, videoId: string) => {
+    if (!user) return;
+
+    if (confirm("この動画をプレイリストから削除しますか？")) {
+      const { error } = await supabase
+        .from('videos')
+        .delete()
+        .eq('id', videoId)
+        .eq('playlist_id', playlistId)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error("Error deleting video:", error);
+      } else {
+        setPlaylists(playlists.map(playlist => 
+          playlist.id === playlistId 
+            ? { 
+              ...playlist, 
+              videos: playlist.videos.filter(video => video.id !== videoId),
+              updated_at: new Date().toISOString()
+            }
+            : playlist
+        ));
+        
+        if (selectedPlaylist?.id === playlistId) {
+          setSelectedPlaylist(prev => prev ? {
+            ...prev,
+            videos: prev.videos.filter(video => video.id !== videoId),
+            updated_at: new Date().toISOString()
+          } : null);
+        }
+
+        const { error: playlistUpdateError } = await supabase
+          .from('playlists')
+          .update({ updated_at: new Date().toISOString() })
+          .eq('id', playlistId);
+
+        if (playlistUpdateError) {
+          console.error("Error updating playlist timestamp:", playlistUpdateError);
+        }
+      }
+    }
   };
 
   return (
     <div className="space-y-6">
-      {/* 統計 */}
       <div className="flex items-center gap-6 text-sm text-gray-600">
         <div className="flex items-center gap-1">
-          <BookOpen className={iconColorVariants({ theme: "recipes" })} />
-          <span>登録レシピ {recipes.length}品</span>
+          <List className={iconColorVariants({ theme: "recipes" })} />
+          <span>プレイリスト {playlists.length}個</span>
         </div>
         <div className="flex items-center gap-1">
-          <Heart className="w-4 h-4 text-red-600" />
-          <span>お気に入り {favoriteRecipes.length}品</span>
+          <Video className="w-4 h-4 text-blue-600" />
+          <span>動画 {totalVideos}本</span>
         </div>
-        {filteredRecipes.length !== recipes.length && (
-          <div className="flex items-center gap-1">
-            <Filter className="w-4 h-4 text-blue-600" />
-            <span>絞り込み結果 {filteredRecipes.length}品</span>
-          </div>
-        )}
       </div>
 
-      {/* レシピ追加とフィルター */}
-      <div className="flex flex-row justify-between items-center gap-4">
-        <h2 className="text-xl font-semibold">レシピ一覧</h2>
-        {recipes.length > 0 && (
-          <AddRecipeButton 
-            onSave={handleSaveRecipe}
-            editingRecipe={editingRecipe}
+      <div className="flex sm:flex-row justify-between items-center gap-4">
+        <h2 className="text-xl font-semibold">動画プレイリスト</h2>
+        {playlists.length > 0 && (
+          <AddPlaylistButton 
+            onSave={handleSavePlaylist}
+            editingPlaylist={editingPlaylist}
             onEditComplete={handleEditComplete}
           >
             <Button className={buttonVariants({ theme: "recipes" })}>
               <Plus className="w-4 h-4 mr-2" />
-              レシピを追加
+              プレイリスト作成
             </Button>
-          </AddRecipeButton>
+          </AddPlaylistButton>
         )}
       </div>
 
-      {/* フィルター */}
-      {recipes.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="h-10 bg-gray-50 hover:bg-gray-100 border-gray-200 transition-colors">
-                <SelectValue placeholder="カテゴリを選択" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">すべてのカテゴリ</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={selectedDifficulty} onValueChange={setSelectedDifficulty}>
-              <SelectTrigger className="h-10 bg-gray-50 hover:bg-gray-100 border-gray-200 transition-colors">
-                <SelectValue placeholder="難易度を選択" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">すべての難易度</SelectItem>
-                {difficultyOptions.map((difficulty) => (
-                  <SelectItem key={difficulty} value={difficulty}>
-                    {difficulty}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Button
-              variant={showOnlyFavorites ? "default" : "outline"}
-              onClick={() => setShowOnlyFavorites(!showOnlyFavorites)}
-              className="h-10 transition-all duration-200 hover:scale-105"
-            >
-              <Heart className={`w-4 h-4 mr-2 ${showOnlyFavorites ? "fill-current" : ""}`} />
-              お気に入り
-            </Button>
-
-            {(selectedCategory !== "all" || selectedDifficulty !== "all" || showOnlyFavorites) && (
-              <Button 
-                variant="ghost" 
-                onClick={clearFilters} 
-                className="h-10 text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                リセット
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* レシピリスト */}
-      <div className="space-y-6">
-        {filteredRecipes.length === 0 ? (
+      <div className="space-y-4">
+        {playlists.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
-              <BookOpen className={`w-16 h-16 mx-auto mb-4 ${textColorVariants({ theme: "recipes" })}`} />
               <h3 className="text-lg font-semibold mb-2">
-                {selectedCategory !== "all" 
-                  ? "選択されたカテゴリにレシピがありません" 
-                  : "レシピがありません"}
+                プレイリストがありません
               </h3>
               <p className="text-gray-600 mb-4">
-                {selectedCategory !== "all"
-                  ? "他のカテゴリを選択してみてください"
-                  : "最初のレシピを追加して料理を始めましょう"}
+                最初のプレイリストを作成して動画を整理しましょう
               </p>
-              {selectedCategory === "all" && (
-                <AddRecipeButton 
-                  onSave={handleSaveRecipe}
-                  editingRecipe={editingRecipe}
-                  onEditComplete={handleEditComplete}
-                >
-                  <Button className={buttonVariants({ theme: "recipes" })}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    レシピを追加
-                  </Button>
-                </AddRecipeButton>
-              )}
+              <AddPlaylistButton 
+                onSave={handleSavePlaylist}
+                editingPlaylist={editingPlaylist}
+                onEditComplete={handleEditComplete}
+              >
+                <Button className={buttonVariants({ theme: "recipes" })}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  プレイリスト作成
+                </Button>
+              </AddPlaylistButton>
             </CardContent>
           </Card>
         ) : (
-          <>
-            {/* お気に入りレシピ */}
-            {filteredRecipes.filter(recipe => recipe.isFavorite).length > 0 && (
-              <div className="space-y-3">
-                <h3 className={`text-lg font-semibold flex items-center gap-2 ${textColorVariants({ theme: "recipes" })}`}>
-                  <Heart className="w-5 h-5 fill-red-500 text-red-500" />
-                  お気に入りレシピ ({filteredRecipes.filter(recipe => recipe.isFavorite).length}品)
-                </h3>
-                <div className="grid gap-3">
-                  {filteredRecipes.filter(recipe => recipe.isFavorite).map((recipe) => (
-                    <Card key={recipe.id} className={cardVariants({ theme: "recipes" })}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h4 className="font-semibold text-lg">{recipe.name}</h4>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => toggleFavorite(recipe.id)}
-                                className="p-1 h-auto"
-                              >
-                                <Heart className="w-4 h-4 fill-red-500 text-red-500" />
-                              </Button>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2 mb-3">
-                              <Badge variant="secondary">{recipe.category}</Badge>
-                              <Badge variant="outline">{recipe.difficulty}</Badge>
-                              <div className="flex items-center gap-1 text-sm text-gray-600">
-                                <Clock className="w-3 h-3" />
-                                <span>{recipe.cookingTime}分</span>
+          <Accordion type="single" collapsible className="space-y-4">
+            {playlists.map((playlist) => (
+              <AccordionItem key={playlist.id} value={playlist.id} className="border-0">
+                <Card className={cardVariants({ theme: "recipes" })}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <AccordionTrigger className="hover:no-underline p-0">
+                          <div className="flex items-center gap-3 text-left">
+                            <div>
+                              <CardTitle className="text-lg">{playlist.name}</CardTitle>
+                              <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
+                                <span>{playlist.videos.length}本の動画</span>
+                                <span>作成日: {new Date(playlist.created_at).toLocaleDateString("ja-JP")}</span>
                               </div>
-                              <div className="flex items-center gap-1 text-sm text-gray-600">
-                                <Users className="w-3 h-3" />
-                                <span>{recipe.servings}人分</span>
-                              </div>
-                            </div>
-                            <div className="space-y-2 text-sm text-gray-600">
-                              <div>
-                                <span className="font-medium">材料: </span>
-                                <span>
-                                  {recipe.ingredients.slice(0, 3).join(", ")}
-                                  {recipe.ingredients.length > 3 && `など${recipe.ingredients.length}種類`}
-                                </span>
-                              </div>
-                              {recipe.instructions.length > 0 && (
-                                <div>
-                                  <span className="font-medium">手順: </span>
-                                  <span>
-                                    {recipe.instructions[0]}
-                                    {recipe.instructions.length > 1 && `など${recipe.instructions.length}ステップ`}
-                                  </span>
-                                </div>
-                              )}
                             </div>
                           </div>
-                          <div className="flex gap-2 ml-4">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleEditRecipe(recipe)}
-                            >
-                              <Edit className="w-4 h-4" />
+                        </AccordionTrigger>
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreVertical className="w-4 h-4" />
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleDeleteRecipe(recipe.id)}
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditPlaylist(playlist)}>
+                              <Edit className="w-4 h-4 mr-2" />
+                              編集
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                setSelectedPlaylist(playlist);
+                                setIsAddVideoDialogOpen(true);
+                              }}
                             >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
+                              <Plus className="w-4 h-4 mr-2" />
+                              動画追加
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDeletePlaylist(playlist.id)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              削除
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                    {playlist.description && (
+                      <p className="text-gray-600 text-sm mt-2">{playlist.description}</p>
+                    )}
+                  </CardHeader>
+                  <AccordionContent>
+                    <CardContent className="pt-0">
+                      {playlist.videos.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                          <Video className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                          <p className="mb-4">動画がありません</p>
+                          <Button
+                            onClick={() => {
+                              setSelectedPlaylist(playlist);
+                              setIsAddVideoDialogOpen(true);
+                            }}
+                            variant="outline"
+                            size="sm"
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            動画を追加
+                          </Button>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* その他のレシピ */}
-            {filteredRecipes.filter(recipe => !recipe.isFavorite).length > 0 && (
-              <div className="space-y-3">
-                <h3 className={`text-lg font-semibold ${textColorVariants({ theme: "recipes" })}`}>
-                  その他のレシピ ({filteredRecipes.filter(recipe => !recipe.isFavorite).length}品)
-                </h3>
-                <div className="grid gap-3">
-                  {filteredRecipes.filter(recipe => !recipe.isFavorite).map((recipe) => (
-                    <Card key={recipe.id} className={cardVariants({ theme: "recipes" })}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h4 className="font-semibold text-lg">{recipe.name}</h4>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => toggleFavorite(recipe.id)}
-                                className="p-1 h-auto"
+                      ) : (
+                        <div className="space-y-3">
+                          {playlist.videos.map((video, index) => (
+                            <div
+                              key={video.id}
+                              className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                            >
+                              <div className="text-sm text-gray-500 font-mono w-8 text-center">
+                                {index + 1}
+                              </div>
+                              <a 
+                                href={video.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="relative w-24 h-14 flex-shrink-0 block"
                               >
-                                <Heart className="w-4 h-4 text-gray-400" />
-                              </Button>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2 mb-3">
-                              <Badge variant="secondary">{recipe.category}</Badge>
-                              <Badge variant="outline">{recipe.difficulty}</Badge>
-                              <div className="flex items-center gap-1 text-sm text-gray-600">
-                                <Clock className="w-3 h-3" />
-                                <span>{recipe.cookingTime}分</span>
-                              </div>
-                              <div className="flex items-center gap-1 text-sm text-gray-600">
-                                <Users className="w-3 h-3" />
-                                <span>{recipe.servings}人分</span>
-                              </div>
-                            </div>
-                            <div className="space-y-2 text-sm text-gray-600">
-                              <div>
-                                <span className="font-medium">材料: </span>
-                                <span>
-                                  {recipe.ingredients.slice(0, 3).join(", ")}
-                                  {recipe.ingredients.length > 3 && `など${recipe.ingredients.length}種類`}
-                                </span>
-                              </div>
-                              {recipe.instructions.length > 0 && (
-                                <div>
-                                  <span className="font-medium">手順: </span>
-                                  <span>
-                                    {recipe.instructions[0]}
-                                    {recipe.instructions.length > 1 && `など${recipe.instructions.length}ステップ`}
-                                  </span>
+                                <Image
+                                  src={video.thumbnail}
+                                  alt={video.title}
+                                  width={96}
+                                  height={56}
+                                  className="object-cover rounded"
+                                  onError={(e) => {
+                                    e.currentTarget.src = "/placeholder-video.png";
+                                  }}
+                                />
+                              </a>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-medium text-sm truncate">{video.title}</h4>
+                                <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                                  <Clock className="w-3 h-3" />
+                                  <span>{video.duration}</span>
+                                  <span>•</span>
+                                  <span>追加日: {new Date(video.added_at).toLocaleDateString("ja-JP")}</span>
                                 </div>
-                              )}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleDeleteVideo(playlist.id, video.id)}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex gap-2 ml-4">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleEditRecipe(recipe)}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleDeleteRecipe(recipe.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
+                          ))}
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
+                      )}
+                    </CardContent>
+                  </AccordionContent>
+                </Card>
+              </AccordionItem>
+            ))}
+          </Accordion>
         )}
       </div>
 
-      {/* 編集用のAddRecipeButton（非表示） */}
-      <AddRecipeButton 
-        onSave={handleSaveRecipe}
-        editingRecipe={editingRecipe}
+      <AddPlaylistButton 
+        onSave={handleSavePlaylist}
+        editingPlaylist={editingPlaylist}
         onEditComplete={handleEditComplete}
       >
         <div style={{ display: 'none' }} />
-      </AddRecipeButton>
+      </AddPlaylistButton>
+
+      <AddVideoDialog
+        isOpen={isAddVideoDialogOpen}
+        onClose={() => setIsAddVideoDialogOpen(false)}
+        onAddVideo={handleAddVideo}
+      />
     </div>
   );
 } 
