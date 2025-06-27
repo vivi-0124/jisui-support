@@ -55,17 +55,19 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, onAuthSucces
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl text-center">ログイン</CardTitle>
-        <CardDescription className="text-center">
+    <Card className="border-none shadow-none w-full max-w-md mx-auto">
+      <CardHeader className="space-y-3 text-center pb-6">
+        <CardTitle className="text-2xl font-bold bg-gradient-to-r from-green-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">
+          ログイン
+        </CardTitle>
+        <CardDescription className="text-gray-500">
           アカウントにログインしてください
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">メールアドレス</Label>
+            <Label htmlFor="email" className="text-sm font-medium text-gray-700">メールアドレス</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
@@ -75,13 +77,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, onAuthSucces
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="pl-10"
+                className="pl-10 h-11 bg-gray-50 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
                 disabled={loading}
               />
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">パスワード</Label>
+            <Label htmlFor="password" className="text-sm font-medium text-gray-700">パスワード</Label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
@@ -91,24 +93,24 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, onAuthSucces
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="pl-10"
+                className="pl-10 h-11 bg-gray-50 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
                 disabled={loading}
               />
             </div>
           </div>
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="rounded-xl">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
           {success && (
-            <Alert className="border-green-200 bg-green-50">
+            <Alert className="rounded-xl border-green-200 bg-green-50">
               <AlertDescription className="text-green-800">{success}</AlertDescription>
             </Alert>
           )}
-          <Button 
-            type="submit" 
-            className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700" 
+          <Button
+            type="submit"
+            className="w-full h-11 bg-gradient-to-r from-green-500 via-purple-500 to-blue-500 hover:from-green-600 hover:via-purple-600 hover:to-blue-600 text-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200"
             disabled={loading}
           >
             {loading ? (
@@ -121,19 +123,21 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, onAuthSucces
             )}
           </Button>
         </form>
+
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t" />
+            <span className="w-full border-t border-gray-200" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">
+            <span className="bg-white px-2 text-gray-500">
               または
             </span>
           </div>
         </div>
+
         <Button
           variant="outline"
-          className="w-full"
+          className="w-full h-11 border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200"
           onClick={handleGoogleSignIn}
           disabled={loading}
         >
@@ -144,9 +148,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, onAuthSucces
           )}
           Googleでログイン
         </Button>
+
         <div className="text-center">
-          <Button 
-            variant="link" 
+          <Button
+            variant="link"
             onClick={onToggleMode}
             className="text-sm text-gray-600 hover:text-gray-800"
           >

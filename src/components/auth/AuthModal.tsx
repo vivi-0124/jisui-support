@@ -24,7 +24,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md p-0 bg-card">
+      <DialogContent className="sm:max-w-md p-0 bg-white border-none shadow-2xl">
         <DialogHeader className="sr-only">
           <DialogTitle>
             {mode === 'login' ? 'ログイン' : 'アカウント作成'}

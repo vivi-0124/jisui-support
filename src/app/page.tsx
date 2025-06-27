@@ -171,13 +171,14 @@ export default function JisuiSupport() {
                 </Button>
               </div>
             ) : (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className={headerButtonVariants({ theme: "home" })}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="bg-gradient-to-r from-green-500 via-purple-500 to-blue-500 hover:from-green-600 hover:via-purple-600 hover:to-blue-600 text-white rounded-full px-4 py-2 shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
                 onClick={() => setAuthModalOpen(true)}
               >
-                <User className="w-5 h-5" />
+                <User className="w-4 h-4" />
+                ログイン/アカウント作成
               </Button>
             )}
           </div>
