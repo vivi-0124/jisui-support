@@ -997,41 +997,37 @@ function VideoCard({
               詳細情報
             </Button>
           </DialogTrigger>
-          <ScrollArea className="h-full">
-            <DialogContent className="flex max-h-[85vh] w-full max-w-[95vw] flex-col overflow-hidden sm:max-w-[600px]">
-              <DialogHeader>
-                <DialogTitle className="line-clamp-2 pr-8 text-left text-base font-semibold sm:text-lg">
-                  {video.title}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="flex-1 overflow-hidden">
-                  <div className="space-y-4 p-4">
-                    <div className="space-y-3">
-                      <h4 className="flex items-center gap-2 text-sm font-semibold">
-                        <FileText className="h-4 w-4 text-orange-600" />
-                        動画の説明
-                      </h4>
-                      {video.description ? (
-                        <div className="rounded-lg border bg-gray-50 p-4">
-                          <p className="text-sm leading-relaxed whitespace-pre-line">
-                            {video.description}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center rounded-lg border bg-gray-50 p-8">
-                          <div className="space-y-2 text-center">
-                            <FileText className="mx-auto h-8 w-8 text-gray-400" />
-                            <p className="text-muted-foreground text-sm">
-                              説明文がありません
-                            </p>
-                          </div>
-                        </div>
-                      )}
+          <DialogContent className="flex max-h-[85vh] w-full max-w-[95vw] flex-col overflow-hidden sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle className="line-clamp-2 pr-8 text-left text-base font-semibold sm:text-lg">
+                {video.title}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex-1 overflow-y-auto pr-4">
+              <div className="space-y-4 py-4">
+                <div className="space-y-3">
+                  <h4 className="flex items-center gap-2 text-sm font-semibold">
+                    <FileText className="h-4 w-4 text-orange-600" />
+                    動画の説明
+                  </h4>
+                  {video.description ? (
+                    <div className="whitespace-pre-line rounded-lg border bg-gray-50 p-4 text-sm leading-relaxed">
+                      {video.description}
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex items-center justify-center rounded-lg border bg-gray-50 p-8">
+                      <div className="space-y-2 text-center">
+                        <FileText className="mx-auto h-8 w-8 text-gray-400" />
+                        <p className="text-muted-foreground text-sm">
+                          説明文がありません
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </DialogContent>
-          </ScrollArea>
+            </div>
+          </DialogContent>
         </Dialog>
 
         {/* 保存ダイアログ */}
