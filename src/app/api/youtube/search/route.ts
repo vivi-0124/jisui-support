@@ -28,6 +28,17 @@ interface YouTubeVideoDetailsResponse {
     statistics: {
       viewCount: string;
     };
+    snippet: {
+      title: string;
+      description: string;
+      channelTitle: string;
+      thumbnails: {
+        medium: {
+          url: string;
+        };
+      };
+      publishedAt: string;
+    };
   }>;
 }
 
@@ -78,7 +89,7 @@ export async function GET(request: NextRequest) {
     const videoIds = searchData.items.map((item) => item.id.videoId).join(',');
 
     // 動画の詳細情報を取得（再生時間、再生回数など）
-    const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,statistics&id=${videoIds}&key=${apiKey}`;
+    const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,statistics,snippet&id=${videoIds}&key=${apiKey}`;
 
     const detailsResponse = await fetch(detailsUrl);
     const detailsData: YouTubeVideoDetailsResponse =
@@ -90,17 +101,19 @@ export async function GET(request: NextRequest) {
         (detail) => detail.id === item.id.videoId
       );
 
+      const snippet = details?.snippet || item.snippet;
+
       return {
         videoId: item.id.videoId,
-        title: item.snippet.title,
-        channelName: item.snippet.channelTitle,
-        thumbnailUrl: item.snippet.thumbnails.medium.url,
-        description: item.snippet.description,
+        title: snippet.title,
+        channelName: snippet.channelTitle,
+        thumbnailUrl: snippet.thumbnails.medium.url,
+        description: snippet.description,
         duration: details?.contentDetails.duration || undefined,
         viewCount: details?.statistics.viewCount
           ? parseInt(details.statistics.viewCount)
           : undefined,
-        publishedAt: item.snippet.publishedAt,
+        publishedAt: snippet.publishedAt,
       };
     });
 
