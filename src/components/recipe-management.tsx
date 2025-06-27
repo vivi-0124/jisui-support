@@ -489,7 +489,7 @@ export default function PlaylistManagement() {
       </div>
 
       <div className="flex sm:flex-row justify-between items-center gap-4">
-        <h2 className="text-xl font-semibold">動画プレイリスト</h2>
+        <h2 className="text-xl font-semibold">レシピ管理</h2>
         {playlists.length > 0 && (
           <AddPlaylistButton 
             onSave={handleSavePlaylist}
@@ -508,22 +508,38 @@ export default function PlaylistManagement() {
         {playlists.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
-              <h3 className="text-lg font-semibold mb-2">
-                プレイリストがありません
-              </h3>
-              <p className="text-gray-600 mb-4">
-                最初のプレイリストを作成して動画を整理しましょう
-              </p>
-              <AddPlaylistButton 
-                onSave={handleSavePlaylist}
-                editingPlaylist={editingPlaylist}
-                onEditComplete={handleEditComplete}
-              >
-                <Button className={buttonVariants({ theme: "recipes" })}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  プレイリスト作成
-                </Button>
-              </AddPlaylistButton>
+              {loading ? (
+                <p className="text-gray-600">読み込み中...</p>
+              ) : !user ? (
+                <>
+                  <Video className="w-16 h-16 mx-auto mb-4 text-blue-300" />
+                  <h3 className="text-lg font-semibold mb-2">プレイリストが空です</h3>
+                  <p className="text-gray-600 mb-4">
+                    ログインしてプレイリストを管理しましょう
+                  </p>
+                  {/* 例: <Button onClick={() => openLoginModal()}>ログイン</Button> */}
+                </>
+              ) : (
+                <>
+                  <Video className="w-16 h-16 mx-auto mb-4 text-blue-300" />
+                  <h3 className="text-lg font-semibold mb-2">
+                    プレイリストが空です
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    最初のプレイリストを作成して動画を整理しましょう
+                  </p>
+                  <AddPlaylistButton 
+                    onSave={handleSavePlaylist}
+                    editingPlaylist={editingPlaylist}
+                    onEditComplete={handleEditComplete}
+                  >
+                    <Button className={buttonVariants({ theme: "recipes" })}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      プレイリスト作成
+                    </Button>
+                  </AddPlaylistButton>
+                </>
+              )}
             </CardContent>
           </Card>
         ) : (
