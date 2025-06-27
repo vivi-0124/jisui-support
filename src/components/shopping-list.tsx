@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -11,17 +11,17 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import {
   Plus,
   ShoppingCart,
@@ -29,12 +29,22 @@ import {
   CheckCircle,
   Trash2,
   Edit,
-} from "lucide-react";
-import { buttonVariants, iconColorVariants, cardVariants, textColorVariants } from "@/lib/theme-variants";
+} from 'lucide-react';
+import {
+  buttonVariants,
+  iconColorVariants,
+  cardVariants,
+  textColorVariants,
+} from '@/lib/theme-variants';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface ShoppingItem {
+interface ShoppingListProps {
+  shoppingItems: ShoppingItem[];
+  setShoppingItems: React.Dispatch<React.SetStateAction<ShoppingItem[]>>;
+}
+
+export interface ShoppingItem {
   id: string;
   user_id: string;
   name: string;
@@ -47,19 +57,19 @@ interface ShoppingItem {
 }
 
 const categories = [
-  "野菜",
-  "肉類",
-  "魚介類",
-  "乳製品",
-  "調味料",
-  "冷凍食品",
-  "その他",
+  '野菜',
+  '肉類',
+  '魚介類',
+  '乳製品',
+  '調味料',
+  '冷凍食品',
+  'その他',
 ];
 
-const units = ["個", "g", "kg", "ml", "L", "本", "枚", "袋", "パック"];
+const units = ['個', 'g', 'kg', 'ml', 'L', '本', '枚', '袋', 'パック'];
 
 interface AddShoppingItemButtonProps {
-  onSave: (item: Omit<ShoppingItem, "id" | "user_id" | "added_date">) => void;
+  onSave: (item: Omit<ShoppingItem, 'id' | 'user_id' | 'added_date'>) => void;
   editingItem?: ShoppingItem | null;
   onEditComplete?: () => void;
   children: React.ReactNode;
@@ -69,14 +79,16 @@ function AddShoppingItemButton({
   onSave,
   editingItem,
   onEditComplete,
-  children
+  children,
 }: AddShoppingItemButtonProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newItem, setNewItem] = useState<Omit<ShoppingItem, "id" | "user_id" | "added_date">>({
-    name: "",
-    category: "",
+  const [newItem, setNewItem] = useState<
+    Omit<ShoppingItem, 'id' | 'user_id' | 'added_date'>
+  >({
+    name: '',
+    category: '',
     quantity: 1,
-    unit: "",
+    unit: '',
     is_purchased: false,
     notes: null,
   });
@@ -97,7 +109,7 @@ function AddShoppingItemButton({
 
   const handleSaveItem = () => {
     if (!newItem.name || !newItem.category || !newItem.unit) {
-      alert("必須項目を入力してください");
+      alert('必須項目を入力してください');
       return;
     }
 
@@ -111,10 +123,10 @@ function AddShoppingItemButton({
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setNewItem({
-      name: "",
-      category: "",
+      name: '',
+      category: '',
       quantity: 1,
-      unit: "",
+      unit: '',
       is_purchased: false,
       notes: null,
     });
@@ -125,13 +137,11 @@ function AddShoppingItemButton({
 
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            {editingItem ? "アイテムを編集" : "新しいアイテムを追加"}
+            {editingItem ? 'アイテムを編集' : '新しいアイテムを追加'}
           </DialogTitle>
           <DialogDescription>
             買い物リストに追加するアイテムの詳細を入力してください。
@@ -143,9 +153,7 @@ function AddShoppingItemButton({
             <Input
               id="name"
               value={newItem.name}
-              onChange={(e) =>
-                setNewItem({ ...newItem, name: e.target.value })
-              }
+              onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
               placeholder="例: 牛乳"
             />
           </div>
@@ -209,7 +217,7 @@ function AddShoppingItemButton({
             <Label htmlFor="notes">メモ</Label>
             <Input
               id="notes"
-              value={newItem.notes || ""}
+              value={newItem.notes || ''}
               onChange={(e) =>
                 setNewItem({ ...newItem, notes: e.target.value || null })
               }
@@ -221,8 +229,11 @@ function AddShoppingItemButton({
           <Button variant="outline" onClick={handleCloseDialog}>
             キャンセル
           </Button>
-          <Button onClick={handleSaveItem} className={buttonVariants({ theme: "shopping" })}>
-            {editingItem ? "更新" : "追加"}
+          <Button
+            onClick={handleSaveItem}
+            className={buttonVariants({ theme: 'shopping' })}
+          >
+            {editingItem ? '更新' : '追加'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -230,102 +241,89 @@ function AddShoppingItemButton({
   );
 }
 
-export default function ShoppingList() {
-  const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
+export default function ShoppingList({
+  shoppingItems,
+  setShoppingItems,
+}: ShoppingListProps) {
   const [editingItem, setEditingItem] = useState<ShoppingItem | null>(null);
 
   const { user, loading } = useAuth();
 
-  useEffect(() => {
-    const fetchShoppingItems = async () => {
-      if (!user) {
-        setShoppingItems([]);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('shopping_items')
-        .select('*')
-        .eq('user_id', user.id);
-
-      if (error) {
-        console.error("Error fetching shopping items:", error);
-      } else {
-        setShoppingItems(data as ShoppingItem[]);
-      }
-    };
-
-    if (!loading) {
-      fetchShoppingItems();
-    }
-  }, [user, loading]);
-
   const unpurchasedItems = shoppingItems.filter((item) => !item.is_purchased);
   const purchasedItems = shoppingItems.filter((item) => item.is_purchased);
 
-  const handleSaveItem = async (itemData: Omit<ShoppingItem, "id" | "user_id" | "added_date">) => {
-    if (!user) return;
+  const handleSaveItem = async (
+    itemData: Omit<ShoppingItem, 'id' | 'user_id' | 'added_date'>
+  ) => {
+    if (user) {
+      if (editingItem) {
+        const { data, error } = await supabase
+          .from('shopping_items')
+          .update({ ...itemData })
+          .eq('id', editingItem.id)
+          .select()
+          .single();
 
-    if (editingItem) {
-      const { data, error } = await supabase
-        .from('shopping_items')
-        .update({
-          name: itemData.name,
-          category: itemData.category,
-          quantity: itemData.quantity,
-          unit: itemData.unit,
-          is_purchased: itemData.is_purchased,
-          notes: itemData.notes,
-        })
-        .eq('id', editingItem.id)
-        .eq('user_id', user.id)
-        .select();
+        if (error) {
+          console.error('Error updating shopping item:', error);
+        } else if (data) {
+          setShoppingItems(
+            shoppingItems.map((item) => (item.id === data.id ? data : item))
+          );
+        }
+      } else {
+        const { data, error } = await supabase
+          .from('shopping_items')
+          .insert([{ ...itemData, user_id: user.id }])
+          .select()
+          .single();
 
-      if (error) {
-        console.error("Error updating shopping item:", error);
-      } else if (data && data.length > 0) {
-        setShoppingItems(
-          shoppingItems.map((item) =>
-            item.id === editingItem.id
-              ? (data[0] as ShoppingItem)
-              : item
-          )
-        );
+        if (error) {
+          console.error('Error creating shopping item:', error);
+        } else if (data) {
+          setShoppingItems([...shoppingItems, data]);
+        }
       }
     } else {
-      const { data, error } = await supabase
-        .from('shopping_items')
-        .insert({
-          user_id: user.id,
-          name: itemData.name,
-          category: itemData.category,
-          quantity: itemData.quantity,
-          unit: itemData.unit,
-          is_purchased: itemData.is_purchased,
-          notes: itemData.notes,
-        })
-        .select();
-
-      if (error) {
-        console.error("Error creating shopping item:", error);
-      } else if (data && data.length > 0) {
-        setShoppingItems([...shoppingItems, data[0] as ShoppingItem]);
+      if (editingItem) {
+        const updatedItems = shoppingItems.map((item) =>
+          item.id === editingItem.id
+            ? {
+                ...item,
+                ...itemData,
+                id: item.id,
+                user_id: item.user_id,
+                added_date: item.added_date,
+              }
+            : item
+        );
+        setShoppingItems(updatedItems);
+      } else {
+        const newItem: ShoppingItem = {
+          ...itemData,
+          id: crypto.randomUUID(),
+          user_id: 'local',
+          added_date: new Date().toISOString(),
+        };
+        setShoppingItems([...shoppingItems, newItem]);
       }
     }
+    setEditingItem(null);
   };
 
   const handleDeleteItem = async (id: string) => {
-    if (!user) return;
+    if (confirm('このアイテムを削除しますか？')) {
+      if (user) {
+        const { error } = await supabase
+          .from('shopping_items')
+          .delete()
+          .eq('id', id);
 
-    if (confirm("このアイテムを削除しますか？")) {
-      const { error } = await supabase
-        .from('shopping_items')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user.id);
-
-      if (error) {
-        console.error("Error deleting shopping item:", error);
+        if (error) {
+          console.error('Error deleting shopping item:', error);
+        } else {
+          setShoppingItems(shoppingItems.filter((item) => item.id !== id));
+        }
       } else {
         setShoppingItems(shoppingItems.filter((item) => item.id !== id));
       }
@@ -341,56 +339,60 @@ export default function ShoppingList() {
   };
 
   const togglePurchaseStatus = async (id: string) => {
-    if (!user) return;
-
-    const itemToUpdate = shoppingItems.find(item => item.id === id);
+    const itemToUpdate = shoppingItems.find((item) => item.id === id);
     if (!itemToUpdate) return;
 
     const newPurchaseStatus = !itemToUpdate.is_purchased;
 
-    const { data, error } = await supabase
-      .from('shopping_items')
-      .update({ is_purchased: newPurchaseStatus })
-      .eq('id', id)
-      .eq('user_id', user.id)
-      .select();
+    if (user) {
+      const { data, error } = await supabase
+        .from('shopping_items')
+        .update({ is_purchased: newPurchaseStatus })
+        .eq('id', id)
+        .select()
+        .single();
 
-    if (error) {
-      console.error("Error updating purchase status:", error);
-    } else if (data && data.length > 0) {
+      if (error) {
+        console.error('Error updating purchase status:', error);
+      } else if (data) {
+        setShoppingItems(
+          shoppingItems.map((item) => (item.id === id ? data : item))
+        );
+      }
+    } else {
       setShoppingItems(
         shoppingItems.map((item) =>
-          item.id === id
-            ? { ...item, is_purchased: newPurchaseStatus }
-            : item
+          item.id === id ? { ...item, is_purchased: newPurchaseStatus } : item
         )
       );
     }
   };
 
   const clearPurchasedItems = async () => {
-    if (!user) return;
+    if (confirm('購入済みのアイテムをすべて削除しますか？')) {
+      if (user) {
+        const purchasedItemIds = purchasedItems.map((item) => item.id);
+        const { error } = await supabase
+          .from('shopping_items')
+          .delete()
+          .in('id', purchasedItemIds);
 
-    if (confirm("購入済みのアイテムをすべて削除しますか？")) {
-      const { error } = await supabase
-        .from('shopping_items')
-        .delete()
-        .eq('is_purchased', true)
-        .eq('user_id', user.id);
-
-      if (error) {
-        console.error("Error clearing purchased items:", error);
+        if (error) {
+          console.error('Error clearing purchased items:', error);
+        } else {
+          setShoppingItems(unpurchasedItems);
+        }
       } else {
-        setShoppingItems(shoppingItems.filter((item) => !item.is_purchased));
+        setShoppingItems(unpurchasedItems);
       }
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-[200px] flex items-center justify-center">
+      <div className="flex min-h-[200px] items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-purple-600"></div>
           <p className="mt-2 text-gray-600">買い物リストを読み込み中...</p>
         </div>
       </div>
@@ -401,39 +403,43 @@ export default function ShoppingList() {
     <div className="space-y-6">
       <div className="flex items-center gap-6 text-sm text-gray-600">
         <div className="flex items-center gap-1">
-          <Circle className={iconColorVariants({ theme: "shopping" })} />
+          <Circle className={iconColorVariants({ theme: 'shopping' })} />
           <span>未購入 {unpurchasedItems.length}品</span>
         </div>
         <div className="flex items-center gap-1">
-          <CheckCircle className="w-4 h-4 text-gray-600" />
+          <CheckCircle className="h-4 w-4 text-gray-600" />
           <span>購入済み {purchasedItems.length}品</span>
         </div>
         <div className="flex items-center gap-1">
-          <ShoppingCart className={iconColorVariants({ theme: "shopping" })} />
+          <ShoppingCart className={iconColorVariants({ theme: 'shopping' })} />
           <span>合計 {shoppingItems.length}品</span>
         </div>
       </div>
 
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">買い物リスト</h2>
-        {user && shoppingItems.length > 0 && (
+        {shoppingItems.length > 0 && (
           <div className="flex gap-2">
             {purchasedItems.length > 0 && (
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={clearPurchasedItems}
-                className={buttonVariants({ theme: "shopping", variant: "outline", size: "sm" })}
+                className={buttonVariants({
+                  theme: 'shopping',
+                  variant: 'outline',
+                  size: 'sm',
+                })}
               >
                 購入済みを削除
               </Button>
             )}
-            <AddShoppingItemButton 
+            <AddShoppingItemButton
               onSave={handleSaveItem}
               editingItem={editingItem}
               onEditComplete={handleEditComplete}
             >
-              <Button className={buttonVariants({ theme: "shopping" })}>
-                <Plus className="w-4 h-4 mr-2" />
+              <Button className={buttonVariants({ theme: 'shopping' })}>
+                <Plus className="mr-2 h-4 w-4" />
                 アイテムを追加
               </Button>
             </AddShoppingItemButton>
@@ -445,23 +451,23 @@ export default function ShoppingList() {
         {shoppingItems.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
-              <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-purple-300" />
-              <h3 className="text-lg font-semibold mb-2">買い物リストが空です</h3>
-              <p className="text-gray-600 mb-4">
-                {user ? "最初のアイテムを追加して買い物を始めましょう" : "ログインして買い物リストを管理しましょう"}
+              <ShoppingCart className="mx-auto mb-4 h-16 w-16 text-purple-300" />
+              <h3 className="mb-2 text-lg font-semibold">
+                買い物リストが空です
+              </h3>
+              <p className="mb-4 text-gray-600">
+                最初のアイテムを追加して買い物を始めましょう
               </p>
-              {user && (
-                <AddShoppingItemButton 
-                  onSave={handleSaveItem}
-                  editingItem={editingItem}
-                  onEditComplete={handleEditComplete}
-                >
-                  <Button className={buttonVariants({ theme: "shopping" })}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    アイテムを追加
-                  </Button>
-                </AddShoppingItemButton>
-              )}
+              <AddShoppingItemButton
+                onSave={handleSaveItem}
+                editingItem={editingItem}
+                onEditComplete={handleEditComplete}
+              >
+                <Button className={buttonVariants({ theme: 'shopping' })}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  アイテムを追加
+                </Button>
+              </AddShoppingItemButton>
             </CardContent>
           </Card>
         ) : (
@@ -469,11 +475,16 @@ export default function ShoppingList() {
             {/* 未購入アイテム */}
             {unpurchasedItems.length > 0 && (
               <div className="space-y-2">
-                <h3 className={`text-lg font-semibold ${textColorVariants({ theme: "shopping" })}`}>
+                <h3
+                  className={`text-lg font-semibold ${textColorVariants({ theme: 'shopping' })}`}
+                >
                   未購入 ({unpurchasedItems.length}品)
                 </h3>
                 {unpurchasedItems.map((item) => (
-                  <Card key={item.id} className={cardVariants({ theme: "shopping" })}>
+                  <Card
+                    key={item.id}
+                    className={cardVariants({ theme: 'shopping' })}
+                  >
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3">
                         <Button
@@ -482,15 +493,16 @@ export default function ShoppingList() {
                           onClick={() => togglePurchaseStatus(item.id)}
                           className="h-8 w-8 p-0"
                         >
-                          <Circle className="w-4 h-4" />
+                          <Circle className="h-4 w-4" />
                         </Button>
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="mb-1 flex items-center gap-2">
                             <h4 className="font-semibold">{item.name}</h4>
                             <Badge variant="secondary">{item.category}</Badge>
                           </div>
                           <div className="text-sm text-gray-600">
-                            数量: {item.quantity}{item.unit}
+                            数量: {item.quantity}
+                            {item.unit}
                             {item.notes && ` | ${item.notes}`}
                           </div>
                         </div>
@@ -500,14 +512,14 @@ export default function ShoppingList() {
                             variant="outline"
                             onClick={() => handleEditItem(item)}
                           >
-                            <Edit className="w-4 h-4" />
+                            <Edit className="h-4 w-4" />
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleDeleteItem(item.id)}
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
@@ -524,26 +536,30 @@ export default function ShoppingList() {
                   購入済み ({purchasedItems.length}品)
                 </h3>
                 {purchasedItems.map((item) => (
-                  <Card key={item.id} className="border-gray-200 bg-gray-50 opacity-75">
+                  <Card
+                    key={item.id}
+                    className="border-gray-200 bg-gray-50 opacity-75"
+                  >
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3">
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => togglePurchaseStatus(item.id)}
-                          className="h-8 w-8 p-0 bg-gray-100"
+                          className="h-8 w-8 bg-gray-100 p-0"
                         >
-                          <CheckCircle className="w-4 h-4 text-gray-600" />
+                          <CheckCircle className="h-4 w-4 text-gray-600" />
                         </Button>
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-semibold line-through text-gray-500">
+                          <div className="mb-1 flex items-center gap-2">
+                            <h4 className="font-semibold text-gray-500 line-through">
                               {item.name}
                             </h4>
                             <Badge variant="secondary">{item.category}</Badge>
                           </div>
                           <div className="text-sm text-gray-500 line-through">
-                            数量: {item.quantity}{item.unit}
+                            数量: {item.quantity}
+                            {item.unit}
                             {item.notes && ` | ${item.notes}`}
                           </div>
                         </div>
@@ -553,7 +569,7 @@ export default function ShoppingList() {
                             variant="outline"
                             onClick={() => handleDeleteItem(item.id)}
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
@@ -566,7 +582,7 @@ export default function ShoppingList() {
         )}
       </div>
 
-      <AddShoppingItemButton 
+      <AddShoppingItemButton
         onSave={handleSaveItem}
         editingItem={editingItem}
         onEditComplete={handleEditComplete}
@@ -575,4 +591,4 @@ export default function ShoppingList() {
       </AddShoppingItemButton>
     </div>
   );
-} 
+}

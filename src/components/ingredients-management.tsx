@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -11,17 +11,17 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import {
   Plus,
   Package,
@@ -29,10 +29,15 @@ import {
   AlertTriangle,
   Trash2,
   Edit,
-} from "lucide-react";
-import { buttonVariants, iconColorVariants } from "@/lib/theme-variants";
+} from 'lucide-react';
+import { buttonVariants, iconColorVariants } from '@/lib/theme-variants';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+
+interface IngredientsManagementProps {
+  ingredients: Ingredient[];
+  setIngredients: React.Dispatch<React.SetStateAction<Ingredient[]>>;
+}
 
 export interface Ingredient {
   id: string; // uuid
@@ -47,38 +52,42 @@ export interface Ingredient {
 }
 
 const categories = [
-  "野菜",
-  "肉類",
-  "魚介類",
-  "乳製品",
-  "調味料",
-  "冷凍食品",
-  "その他",
+  '野菜',
+  '肉類',
+  '魚介類',
+  '乳製品',
+  '調味料',
+  '冷凍食品',
+  'その他',
 ];
 
-const units = ["個", "g", "kg", "ml", "L", "本", "枚", "袋", "パック"];
+const units = ['個', 'g', 'kg', 'ml', 'L', '本', '枚', '袋', 'パック'];
 
-const locations = ["冷蔵庫", "冷凍庫", "常温", "野菜室"];
+const locations = ['冷蔵庫', '冷凍庫', '常温', '野菜室'];
 
 interface AddIngredientButtonProps {
-  onSave: (ingredient: Omit<Ingredient, "id" | "user_id" | "created_at">) => void; // 型定義を更新
+  onSave: (
+    ingredient: Omit<Ingredient, 'id' | 'user_id' | 'created_at'>
+  ) => void; // 型定義を更新
   editingIngredient?: Ingredient | null;
   onEditComplete?: () => void;
   children: React.ReactNode;
 }
 
-function AddIngredientButton({ 
-  onSave, 
-  editingIngredient, 
-  onEditComplete, 
-  children 
+function AddIngredientButton({
+  onSave,
+  editingIngredient,
+  onEditComplete,
+  children,
 }: AddIngredientButtonProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newIngredient, setNewIngredient] = useState<Omit<Ingredient, "id" | "user_id" | "created_at">>({
-    name: "",
-    category: "",
+  const [newIngredient, setNewIngredient] = useState<
+    Omit<Ingredient, 'id' | 'user_id' | 'created_at'>
+  >({
+    name: '',
+    category: '',
     quantity: 1,
-    unit: "",
+    unit: '',
     expiry_date: null,
     location: null,
   });
@@ -99,7 +108,7 @@ function AddIngredientButton({
 
   const handleSaveIngredient = () => {
     if (!newIngredient.name || !newIngredient.category || !newIngredient.unit) {
-      alert("必須項目を入力してください");
+      alert('必須項目を入力してください');
       return;
     }
 
@@ -113,10 +122,10 @@ function AddIngredientButton({
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setNewIngredient({
-      name: "",
-      category: "",
+      name: '',
+      category: '',
       quantity: 1,
-      unit: "",
+      unit: '',
       expiry_date: null,
       location: null,
     });
@@ -127,13 +136,11 @@ function AddIngredientButton({
 
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            {editingIngredient ? "材料を編集" : "新しい材料を追加"}
+            {editingIngredient ? '材料を編集' : '新しい材料を追加'}
           </DialogTitle>
           <DialogDescription>
             材料の詳細情報を入力してください。
@@ -212,7 +219,7 @@ function AddIngredientButton({
             <Input
               id="expiry"
               type="date"
-              value={newIngredient.expiry_date || ""}
+              value={newIngredient.expiry_date || ''}
               onChange={(e) =>
                 setNewIngredient({
                   ...newIngredient,
@@ -224,7 +231,7 @@ function AddIngredientButton({
           <div>
             <Label htmlFor="location">保存場所</Label>
             <Select
-              value={newIngredient.location || ""}
+              value={newIngredient.location || ''}
               onValueChange={(value) =>
                 setNewIngredient({ ...newIngredient, location: value || null })
               }
@@ -246,8 +253,11 @@ function AddIngredientButton({
           <Button variant="outline" onClick={handleCloseDialog}>
             キャンセル
           </Button>
-          <Button onClick={handleSaveIngredient} className={buttonVariants({ theme: "ingredients" })}>
-            {editingIngredient ? "更新" : "追加"}
+          <Button
+            onClick={handleSaveIngredient}
+            className={buttonVariants({ theme: 'ingredients' })}
+          >
+            {editingIngredient ? '更新' : '追加'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -255,38 +265,17 @@ function AddIngredientButton({
   );
 }
 
-export default function IngredientsManagement() {
-  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
-  const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
-  
+export default function IngredientsManagement({
+  ingredients,
+  setIngredients,
+}: IngredientsManagementProps) {
+  const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(
+    null
+  );
   const { user, loading } = useAuth();
 
-  useEffect(() => {
-    const fetchIngredients = async () => {
-      if (!user) {
-        setIngredients([]);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('ingredients')
-        .select('*')
-        .eq('user_id', user.id);
-
-      if (error) {
-        console.error("Error fetching ingredients:", error);
-      } else {
-        setIngredients(data as Ingredient[]);
-      }
-    };
-
-    if (!loading) {
-      fetchIngredients();
-    }
-  }, [user, loading]);
-
   const getExpiryStatus = (expiryDate: string | null) => {
-    if (!expiryDate) return "fresh";
+    if (!expiryDate) return 'fresh';
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -296,84 +285,101 @@ export default function IngredientsManagement() {
     const diffTime = expiry.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays < 0) return "expired";
-    if (diffDays <= 3) return "expiring";
-    return "fresh";
+    if (diffDays < 0) return 'expired';
+    if (diffDays <= 3) return 'expiring';
+    return 'fresh';
   };
 
   const expiringIngredients = ingredients.filter(
-    (ingredient) => getExpiryStatus(ingredient.expiry_date) === "expiring"
+    (ingredient) => getExpiryStatus(ingredient.expiry_date) === 'expiring'
   );
 
   const expiredIngredients = ingredients.filter(
-    (ingredient) => getExpiryStatus(ingredient.expiry_date) === "expired"
+    (ingredient) => getExpiryStatus(ingredient.expiry_date) === 'expired'
   );
 
-  const handleSaveIngredient = async (ingredientData: Omit<Ingredient, "id" | "user_id" | "created_at">) => {
-    if (!user) return;
+  const handleSaveIngredient = async (
+    ingredientData: Omit<Ingredient, 'id' | 'user_id' | 'created_at'>
+  ) => {
+    if (!ingredientData.name.trim()) return;
 
-    if (editingIngredient) {
-      const { data, error } = await supabase
-        .from('ingredients')
-        .update({
-          name: ingredientData.name,
-          category: ingredientData.category,
-          quantity: ingredientData.quantity,
-          unit: ingredientData.unit,
-          expiry_date: ingredientData.expiry_date,
-          location: ingredientData.location,
-        })
-        .eq('id', editingIngredient.id)
-        .eq('user_id', user.id)
-        .select();
+    if (user) {
+      // ログイン時：Supabaseに保存
+      if (editingIngredient) {
+        // 更新
+        const { data, error } = await supabase
+          .from('ingredients')
+          .update({ ...ingredientData })
+          .eq('id', editingIngredient.id)
+          .select()
+          .single();
 
-      if (error) {
-        console.error("Error updating ingredient:", error);
-      } else if (data && data.length > 0) {
-        setIngredients(
-          ingredients.map((item) =>
-            item.id === editingIngredient.id
-              ? (data[0] as Ingredient) // 明示的にIngredientとしてキャスト
-              : item
-          )
-        );
+        if (error) {
+          console.error('Error updating ingredient:', error);
+        } else {
+          setIngredients(ingredients.map((i) => (i.id === data.id ? data : i)));
+        }
+      } else {
+        // 新規作成
+        const { data, error } = await supabase
+          .from('ingredients')
+          .insert([{ ...ingredientData, user_id: user.id }])
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error creating ingredient:', error);
+        } else if (data) {
+          setIngredients([...ingredients, data]);
+        }
       }
     } else {
-      const { data, error } = await supabase
-        .from('ingredients')
-        .insert({
-          user_id: user.id,
-          name: ingredientData.name,
-          category: ingredientData.category,
-          quantity: ingredientData.quantity,
-          unit: ingredientData.unit,
-          expiry_date: ingredientData.expiry_date,
-          location: ingredientData.location,
-        })
-        .select();
-
-      if (error) {
-        console.error("Error creating ingredient:", error);
-      } else if (data && data.length > 0) {
-        setIngredients([...ingredients, data[0] as Ingredient]); // 明示的にIngredientとしてキャスト
+      // 未ログイン時：ローカルストレージに保存
+      if (editingIngredient) {
+        // 更新
+        const updatedIngredients = ingredients.map((i) =>
+          i.id === editingIngredient.id
+            ? {
+                ...i,
+                ...ingredientData,
+                id: i.id,
+                user_id: i.user_id,
+                created_at: i.created_at,
+              }
+            : i
+        );
+        setIngredients(updatedIngredients);
+      } else {
+        // 新規作成
+        const newIngredientWithId: Ingredient = {
+          ...ingredientData,
+          id: crypto.randomUUID(),
+          user_id: 'local', // 仮のID
+          created_at: new Date().toISOString(),
+        };
+        setIngredients([...ingredients, newIngredientWithId]);
       }
     }
+    setEditingIngredient(null);
   };
 
   const handleDeleteIngredient = async (id: string) => {
-    if (!user) return;
+    if (confirm('この材料を削除しますか？')) {
+      if (user) {
+        // ログイン時：Supabaseから削除
+        const { error } = await supabase
+          .from('ingredients')
+          .delete()
+          .eq('id', id);
 
-    if (confirm("この材料を削除しますか？")) {
-      const { error } = await supabase
-        .from('ingredients')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user.id);
-
-      if (error) {
-        console.error("Error deleting ingredient:", error);
+        if (error) {
+          console.error('Error deleting ingredient:', error);
+        } else {
+          setIngredients(ingredients.filter((i) => i.id !== id));
+        }
       } else {
-        setIngredients(ingredients.filter((ingredient) => ingredient.id !== id));
+        // 未ログイン時：ローカルストレージから削除
+        setIngredients(ingredients.filter((i) => i.id !== id));
       }
     }
   };
@@ -388,9 +394,9 @@ export default function IngredientsManagement() {
 
   if (loading) {
     return (
-      <div className="min-h-[200px] flex items-center justify-center">
+      <div className="flex min-h-[200px] items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-green-600"></div>
           <p className="mt-2 text-gray-600">材料データを読み込み中...</p>
         </div>
       </div>
@@ -401,29 +407,29 @@ export default function IngredientsManagement() {
     <div className="space-y-6">
       <div className="flex items-center gap-6 text-sm text-gray-600">
         <div className="flex items-center gap-1">
-          <Package className={iconColorVariants({ theme: "ingredients" })} />
+          <Package className={iconColorVariants({ theme: 'ingredients' })} />
           <span>保有食材 {ingredients.length}品</span>
         </div>
         <div className="flex items-center gap-1">
-          <AlertTriangle className="w-4 h-4 text-orange-600" />
+          <AlertTriangle className="h-4 w-4 text-orange-600" />
           <span>期限間近 {expiringIngredients.length}品</span>
         </div>
         <div className="flex items-center gap-1">
-          <Calendar className="w-4 h-4 text-red-600" />
+          <Calendar className="h-4 w-4 text-red-600" />
           <span>期限切れ {expiredIngredients.length}品</span>
         </div>
       </div>
 
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">材料一覧</h2>
-        {user && ingredients.length > 0 && (
-          <AddIngredientButton 
+        {ingredients.length > 0 && (
+          <AddIngredientButton
             onSave={handleSaveIngredient}
             editingIngredient={editingIngredient}
             onEditComplete={handleEditComplete}
           >
-            <Button className={buttonVariants({ theme: "ingredients" })}>
-              <Plus className="w-4 h-4 mr-2" />
+            <Button className={buttonVariants({ theme: 'ingredients' })}>
+              <Plus className="mr-2 h-4 w-4" />
               材料を追加
             </Button>
           </AddIngredientButton>
@@ -434,23 +440,21 @@ export default function IngredientsManagement() {
         {ingredients.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
-              <Package className="w-16 h-16 mx-auto mb-4 text-green-300" />
-              <h3 className="text-lg font-semibold mb-2">材料がありません</h3>
-              <p className="text-gray-600 mb-4">
-                {user ? "最初の材料を追加して管理を始めましょう" : "ログインして材料を管理しましょう"}
+              <Package className="mx-auto mb-4 h-16 w-16 text-green-300" />
+              <h3 className="mb-2 text-lg font-semibold">材料がありません</h3>
+              <p className="mb-4 text-gray-600">
+                最初の材料を追加して管理を始めましょう
               </p>
-              {user && (
-                <AddIngredientButton 
-                  onSave={handleSaveIngredient}
-                  editingIngredient={editingIngredient}
-                  onEditComplete={handleEditComplete}
-                >
-                  <Button className={buttonVariants({ theme: "ingredients" })}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    材料を追加
-                  </Button>
-                </AddIngredientButton>
-              )}
+              <AddIngredientButton
+                onSave={handleSaveIngredient}
+                editingIngredient={editingIngredient}
+                onEditComplete={handleEditComplete}
+              >
+                <Button className={buttonVariants({ theme: 'ingredients' })}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  材料を追加
+                </Button>
+              </AddIngredientButton>
             </CardContent>
           </Card>
         ) : (
@@ -461,27 +465,25 @@ export default function IngredientsManagement() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="mb-2 flex items-center gap-2">
                         <h3 className="font-semibold">{ingredient.name}</h3>
                         <Badge variant="secondary">{ingredient.category}</Badge>
-                        {expiryStatus === "expired" && (
+                        {expiryStatus === 'expired' && (
                           <Badge variant="destructive">期限切れ</Badge>
                         )}
-                        {expiryStatus === "expiring" && (
+                        {expiryStatus === 'expiring' && (
                           <Badge variant="outline" className="text-orange-600">
                             期限間近
                           </Badge>
                         )}
                       </div>
-                      <div className="text-sm text-gray-600 space-y-1">
+                      <div className="space-y-1 text-sm text-gray-600">
                         <div>
                           数量: {ingredient.quantity}
                           {ingredient.unit}
                         </div>
                         {ingredient.expiry_date && (
-                          <div>
-                            消費期限: {ingredient.expiry_date}
-                          </div>
+                          <div>消費期限: {ingredient.expiry_date}</div>
                         )}
                         {ingredient.location && (
                           <div>保存場所: {ingredient.location}</div>
@@ -494,14 +496,14 @@ export default function IngredientsManagement() {
                         variant="outline"
                         onClick={() => handleEditIngredient(ingredient)}
                       >
-                        <Edit className="w-4 h-4" />
+                        <Edit className="h-4 w-4" />
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => handleDeleteIngredient(ingredient.id)}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -512,7 +514,7 @@ export default function IngredientsManagement() {
         )}
       </div>
 
-      <AddIngredientButton 
+      <AddIngredientButton
         onSave={handleSaveIngredient}
         editingIngredient={editingIngredient}
         onEditComplete={handleEditComplete}
@@ -521,4 +523,4 @@ export default function IngredientsManagement() {
       </AddIngredientButton>
     </div>
   );
-} 
+}

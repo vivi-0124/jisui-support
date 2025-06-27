@@ -1,0 +1,20 @@
+# Ignore artifacts:
+.next/
+node_modules/
+dist/
+coverage/
+
+# Ignore dotfiles:
+.env
+.env.local
+.env.production
+.env.development
+
+# Ignore lockfiles:
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Ignore misc:
+*.log
+CHANGELOG.md 

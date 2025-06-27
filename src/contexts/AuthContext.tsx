@@ -1,94 +1,72 @@
-"use client";
+'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react'
-import { User, Session, AuthResponse, AuthTokenResponsePassword, OAuthResponse } from '@supabase/supabase-js'
-import { supabase } from '@/lib/supabase'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+  useMemo,
+} from 'react';
+import { SupabaseClient, User, Session } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 
-interface AuthContextType {
-  user: User | null
-  session: Session | null
-  loading: boolean
-  signIn: (email: string, password: string) => Promise<AuthTokenResponsePassword>
-  signUp: (email: string, password: string) => Promise<AuthResponse>
-  signOut: () => Promise<void>
-  signInWithGoogle: () => Promise<OAuthResponse>
-}
+type AuthContextType = {
+  supabase: SupabaseClient;
+  user: User | null;
+  session: Session | null;
+  loading: boolean;
+};
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
-  return context
-}
-
-interface AuthProviderProps {
-  children: React.ReactNode
-}
-
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null)
-  const [session, setSession] = useState<Session | null>(null)
-  const [loading, setLoading] = useState(true)
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 初期認証状態の取得
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+    const getSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    };
 
-    // 認証状態の変化を監視
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+    getSession();
 
-    return () => subscription.unsubscribe()
-  }, [])
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
+    );
 
-  const signIn = async (email: string, password: string) => {
-    const result = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-    return result
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      supabase,
+      user,
+      session,
+      loading,
+    }),
+    [user, session, loading]
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
   }
-
-  const signUp = async (email: string, password: string) => {
-    const result = await supabase.auth.signUp({
-      email,
-      password,
-    })
-    return result
-  }
-
-  const signOut = async () => {
-    await supabase.auth.signOut()
-  }
-
-  const signInWithGoogle = async () => {
-    const result = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-    })
-    return result
-  }
-
-  const value: AuthContextType = {
-    user,
-    session,
-    loading,
-    signIn,
-    signUp,
-    signOut,
-    signInWithGoogle,
-  }
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-} 
+  return context;
+};
