@@ -157,8 +157,7 @@ async function analyzeVideoWithGemini(
     "手順2の詳細な説明"
   ],
   "servings": "何人分",
-  "cookingTime": "調理時間（分）",
-  "tips": "料理のコツやポイント"
+  "cookingTime": "調理時間（分）"
 }
 
 重要な指示：
@@ -167,6 +166,7 @@ async function analyzeVideoWithGemini(
 3. 動画で実際に使用されている材料と手順のみを抽出してください
 4. 推測ではなく、動画で確認できる内容のみを記載してください
 5. 日本語で回答してください
+6. 回答はJSONオブジェクトのみとし、他のテキストは一切含めないでください
 
 動画の内容を詳しく分析して、正確な料理レシピを抽出してください。
 `;
@@ -247,6 +247,7 @@ async function analyzeTextWithGemini(
 4. 料理名から一般的な材料や手順を推測して追加してください
 5. 日本語で回答してください
 6. 最低でも5つの材料と5つの手順を含めてください
+7. 回答はJSONオブジェクトのみとし、他のテキストは一切含めないでください
 
 料理の専門知識を活用して、実用的なレシピを作成してください。
 `;
@@ -256,13 +257,23 @@ async function analyzeTextWithGemini(
     const response = await result.response;
     const text = response.text();
     
-    // JSONレスポンスをパース
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
+    // JSONレスポンスをパース - より厳密な抽出
+    let jsonText = text.trim();
+    
+    // コードブロックマーカーを削除
+    jsonText = jsonText.replace(/```json\s*/, '').replace(/```\s*$/, '');
+    
+    // 最初と最後の { } を見つけて抽出
+    const firstBrace = jsonText.indexOf('{');
+    const lastBrace = jsonText.lastIndexOf('}');
+    
+    if (firstBrace === -1 || lastBrace === -1 || firstBrace >= lastBrace) {
       throw new Error('有効なJSONレスポンスが見つかりません');
     }
-
-    const recipeData = JSON.parse(jsonMatch[0]);
+    
+    jsonText = jsonText.substring(firstBrace, lastBrace + 1);
+    
+    const recipeData = JSON.parse(jsonText);
 
     return {
       title: videoDetails.title,
