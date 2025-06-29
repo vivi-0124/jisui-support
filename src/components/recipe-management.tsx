@@ -14,6 +14,9 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +37,12 @@ import {
   MoreVertical,
   Clock,
   Video,
+  ShoppingCart,
+  Download,
+  Loader2,
+  Package,
+  AlertCircle,
+  Users,
 } from 'lucide-react';
 import {
   buttonVariants,
@@ -66,6 +75,28 @@ export interface Playlist {
 interface RecipeManagementProps {
   playlists: Playlist[];
   setPlaylists: React.Dispatch<React.SetStateAction<Playlist[]>>;
+}
+
+interface ExtractedRecipe {
+  title: string;
+  ingredients: string[];
+  steps: string[];
+  servings?: string;
+  cookingTime?: string;
+  description: string;
+  extractionMethod: 'gemini_video_analysis' | 'gemini_text_analysis' | 'description';
+}
+
+interface ShoppingItem {
+  id: string;
+  user_id: string;
+  name: string;
+  category: string;
+  quantity: number;
+  unit: string;
+  is_purchased: boolean;
+  notes: string | null;
+  added_date: string;
 }
 
 interface AddPlaylistButtonProps {
@@ -300,6 +331,305 @@ function AddVideoDialog({ isOpen, onClose, onAddVideo }: AddVideoDialogProps) {
   );
 }
 
+interface AddToShoppingListDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  extractedRecipe: ExtractedRecipe | null;
+  onAddToShoppingList: (ingredients: { name: string; category: string; quantity: number; unit: string; notes?: string }[]) => void;
+}
+
+function AddToShoppingListDialog({ 
+  isOpen, 
+  onClose, 
+  extractedRecipe, 
+  onAddToShoppingList 
+}: AddToShoppingListDialogProps) {
+  const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
+  const [ingredientDetails, setIngredientDetails] = useState<Record<string, {
+    category: string;
+    quantity: number;
+    unit: string;
+    notes: string;
+  }>>({});
+
+  const categories = [
+    '野菜',
+    '肉類',
+    '魚介類',
+    '乳製品',
+    '調味料',
+    '冷凍食品',
+    'その他',
+  ];
+
+  const units = ['個', 'g', 'kg', 'ml', 'L', '本', '枚', '袋', 'パック', '大さじ', '小さじ'];
+
+  useEffect(() => {
+    if (extractedRecipe && isOpen) {
+      // 初期化
+      setSelectedIngredients([]);
+      const initialDetails: Record<string, any> = {};
+      
+      extractedRecipe.ingredients.forEach((ingredient, index) => {
+        const ingredientId = `ingredient-${index}`;
+        
+        // 材料名から分量と単位を分離
+        const parts = ingredient.split(/\s+/);
+        let name = ingredient;
+        let quantity = 1;
+        let unit = '個';
+        
+        if (parts.length > 1) {
+          const lastPart = parts[parts.length - 1];
+          const secondLastPart = parts.length > 2 ? parts[parts.length - 2] : '';
+          
+          // 数量と単位の抽出
+          const quantityMatch = ingredient.match(/(\d+(?:\.\d+)?)\s*(g|kg|ml|L|個|本|枚|袋|パック|大さじ|小さじ|カップ)/);
+          if (quantityMatch) {
+            quantity = parseFloat(quantityMatch[1]);
+            unit = quantityMatch[2];
+            name = ingredient.replace(quantityMatch[0], '').trim();
+          } else if (units.includes(lastPart)) {
+            unit = lastPart;
+            if (!isNaN(parseFloat(secondLastPart))) {
+              quantity = parseFloat(secondLastPart);
+              name = parts.slice(0, -2).join(' ');
+            } else {
+              name = parts.slice(0, -1).join(' ');
+            }
+          }
+        }
+        
+        // カテゴリの推測
+        let category = 'その他';
+        const lowerName = name.toLowerCase();
+        if (lowerName.includes('肉') || lowerName.includes('豚') || lowerName.includes('牛') || lowerName.includes('鶏')) {
+          category = '肉類';
+        } else if (lowerName.includes('魚') || lowerName.includes('海老') || lowerName.includes('蟹')) {
+          category = '魚介類';
+        } else if (lowerName.includes('牛乳') || lowerName.includes('チーズ') || lowerName.includes('バター')) {
+          category = '乳製品';
+        } else if (lowerName.includes('醤油') || lowerName.includes('味噌') || lowerName.includes('塩') || lowerName.includes('砂糖')) {
+          category = '調味料';
+        } else if (lowerName.includes('玉ねぎ') || lowerName.includes('にんじん') || lowerName.includes('じゃがいも') || 
+                   lowerName.includes('トマト') || lowerName.includes('きゅうり') || lowerName.includes('レタス')) {
+          category = '野菜';
+        }
+        
+        initialDetails[ingredientId] = {
+          category,
+          quantity,
+          unit,
+          notes: '',
+        };
+      });
+      
+      setIngredientDetails(initialDetails);
+    }
+  }, [extractedRecipe, isOpen]);
+
+  const handleIngredientToggle = (ingredientId: string) => {
+    setSelectedIngredients(prev => 
+      prev.includes(ingredientId) 
+        ? prev.filter(id => id !== ingredientId)
+        : [...prev, ingredientId]
+    );
+  };
+
+  const handleDetailChange = (ingredientId: string, field: string, value: any) => {
+    setIngredientDetails(prev => ({
+      ...prev,
+      [ingredientId]: {
+        ...prev[ingredientId],
+        [field]: value,
+      }
+    }));
+  };
+
+  const handleAddToShoppingList = () => {
+    if (selectedIngredients.length === 0) {
+      alert('追加する材料を選択してください');
+      return;
+    }
+
+    const ingredientsToAdd = selectedIngredients.map(ingredientId => {
+      const index = parseInt(ingredientId.split('-')[1]);
+      const originalIngredient = extractedRecipe!.ingredients[index];
+      const details = ingredientDetails[ingredientId];
+      
+      // 材料名を抽出（分量と単位を除去）
+      let name = originalIngredient;
+      const quantityMatch = originalIngredient.match(/(\d+(?:\.\d+)?)\s*(g|kg|ml|L|個|本|枚|袋|パック|大さじ|小さじ|カップ)/);
+      if (quantityMatch) {
+        name = originalIngredient.replace(quantityMatch[0], '').trim();
+      } else {
+        const parts = originalIngredient.split(/\s+/);
+        if (parts.length > 1 && units.includes(parts[parts.length - 1])) {
+          name = parts.slice(0, -1).join(' ');
+          if (parts.length > 2 && !isNaN(parseFloat(parts[parts.length - 2]))) {
+            name = parts.slice(0, -2).join(' ');
+          }
+        }
+      }
+      
+      return {
+        name: name || originalIngredient,
+        category: details.category,
+        quantity: details.quantity,
+        unit: details.unit,
+        notes: details.notes || undefined,
+      };
+    });
+
+    onAddToShoppingList(ingredientsToAdd);
+    onClose();
+  };
+
+  if (!extractedRecipe) return null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[700px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ShoppingCart className="h-5 w-5 text-purple-600" />
+            買い物リストに追加
+          </DialogTitle>
+          <DialogDescription>
+            レシピから必要な材料を買い物リストに追加します
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4 py-4">
+          <div className="rounded-lg bg-blue-50 p-3">
+            <h4 className="font-semibold">{extractedRecipe.title}</h4>
+            <div className="mt-1 flex items-center gap-4 text-sm text-gray-600">
+              {extractedRecipe.servings && <span>👥 {extractedRecipe.servings}</span>}
+              {extractedRecipe.cookingTime && <span>⏱️ {extractedRecipe.cookingTime}</span>}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-base font-semibold">材料を選択</Label>
+              <Badge variant="secondary">
+                {selectedIngredients.length}/{extractedRecipe.ingredients.length}個選択中
+              </Badge>
+            </div>
+
+            <ScrollArea className="h-[400px]">
+              <div className="space-y-3 pr-4">
+                {extractedRecipe.ingredients.map((ingredient, index) => {
+                  const ingredientId = `ingredient-${index}`;
+                  const isSelected = selectedIngredients.includes(ingredientId);
+                  const details = ingredientDetails[ingredientId] || {
+                    category: 'その他',
+                    quantity: 1,
+                    unit: '個',
+                    notes: '',
+                  };
+
+                  return (
+                    <div
+                      key={ingredientId}
+                      className={`rounded-lg border p-4 transition-all ${
+                        isSelected
+                          ? 'border-purple-300 bg-purple-50'
+                          : 'border-gray-200 bg-white hover:border-purple-200'
+                      }`}
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-3">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => handleIngredientToggle(ingredientId)}
+                            className="mt-1 data-[state=checked]:border-purple-500 data-[state=checked]:bg-purple-500"
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium">{ingredient}</div>
+                            <div className="text-sm text-gray-500">
+                              元の表記: {ingredient}
+                            </div>
+                          </div>
+                        </div>
+
+                        {isSelected && (
+                          <div className="ml-6 grid grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-xs">カテゴリ</Label>
+                              <select
+                                value={details.category}
+                                onChange={(e) => handleDetailChange(ingredientId, 'category', e.target.value)}
+                                className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                              >
+                                {categories.map(category => (
+                                  <option key={category} value={category}>{category}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <Label className="text-xs">数量</Label>
+                                <Input
+                                  type="number"
+                                  min="0.1"
+                                  step="0.1"
+                                  value={details.quantity}
+                                  onChange={(e) => handleDetailChange(ingredientId, 'quantity', parseFloat(e.target.value) || 1)}
+                                  className="mt-1 h-8 text-sm"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">単位</Label>
+                                <select
+                                  value={details.unit}
+                                  onChange={(e) => handleDetailChange(ingredientId, 'unit', e.target.value)}
+                                  className="mt-1 h-8 w-full rounded-md border border-gray-300 px-2 text-sm"
+                                >
+                                  {units.map(unit => (
+                                    <option key={unit} value={unit}>{unit}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                            <div className="col-span-2">
+                              <Label className="text-xs">メモ</Label>
+                              <Input
+                                value={details.notes}
+                                onChange={(e) => handleDetailChange(ingredientId, 'notes', e.target.value)}
+                                placeholder="例: 低脂肪、有機栽培"
+                                className="mt-1 h-8 text-sm"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            キャンセル
+          </Button>
+          <Button
+            onClick={handleAddToShoppingList}
+            disabled={selectedIngredients.length === 0}
+            className={buttonVariants({ theme: 'shopping' })}
+          >
+            <ShoppingCart className="mr-2 h-4 w-4" />
+            買い物リストに追加 ({selectedIngredients.length}個)
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function RecipeManagement({
   playlists,
   setPlaylists,
@@ -308,6 +638,11 @@ export default function RecipeManagement({
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
   const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
   const [isAddVideoDialogOpen, setIsAddVideoDialogOpen] = useState(false);
+  const [showRecipeDialog, setShowRecipeDialog] = useState(false);
+  const [showShoppingDialog, setShowShoppingDialog] = useState(false);
+  const [extractedRecipe, setExtractedRecipe] = useState<ExtractedRecipe | null>(null);
+  const [extractingRecipe, setExtractingRecipe] = useState(false);
+  const [currentVideo, setCurrentVideo] = useState<Video | null>(null);
 
   const handleSavePlaylist = async (
     playlistData: Omit<Playlist, 'id' | 'user_id' | 'created_at' | 'updated_at'>
@@ -382,13 +717,14 @@ export default function RecipeManagement({
     if (!activePlaylistId || !user) return;
 
     const { data, error } = await supabase
-      .from('playlist_videos')
+      .from('videos')
       .insert([
         {
           playlist_id: activePlaylistId,
-          video_title: videoData.title,
-          video_url: videoData.url,
-          thumbnail_url: videoData.thumbnail,
+          user_id: user.id,
+          title: videoData.title,
+          url: videoData.url,
+          thumbnail: videoData.thumbnail,
           duration: videoData.duration,
         },
       ])
@@ -400,9 +736,9 @@ export default function RecipeManagement({
     } else {
       const newVideo = {
         id: data.id,
-        title: data.video_title,
-        url: data.video_url,
-        thumbnail: data.thumbnail_url,
+        title: data.title,
+        url: data.url,
+        thumbnail: data.thumbnail,
         duration: data.duration,
         added_at: data.created_at,
       };
@@ -419,7 +755,7 @@ export default function RecipeManagement({
 
   const handleDeleteVideo = async (playlistId: string, videoId: string) => {
     const { error } = await supabase
-      .from('playlist_videos')
+      .from('videos')
       .delete()
       .eq('id', videoId);
 
@@ -434,6 +770,84 @@ export default function RecipeManagement({
         )
       );
     }
+  };
+
+  const handleExtractRecipe = async (video: Video) => {
+    setCurrentVideo(video);
+    setExtractingRecipe(true);
+    try {
+      // YouTube URLから動画IDを抽出
+      const videoId = extractVideoId(video.url);
+      if (!videoId) {
+        throw new Error('動画IDの抽出に失敗しました');
+      }
+
+      const response = await fetch(`/api/youtube/extract-recipe?videoId=${videoId}`);
+      const data = await response.json();
+      
+      if (response.ok) {
+        setExtractedRecipe(data.recipe);
+        setShowRecipeDialog(true);
+      } else {
+        alert(data.error || 'レシピの抽出に失敗しました');
+      }
+    } catch (error) {
+      console.error('Recipe extraction error:', error);
+      alert('レシピの抽出中にエラーが発生しました');
+    } finally {
+      setExtractingRecipe(false);
+    }
+  };
+
+  const extractVideoId = (url: string): string | null => {
+    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+  };
+
+  const handleAddToShoppingList = async (ingredients: { name: string; category: string; quantity: number; unit: string; notes?: string }[]) => {
+    if (!user) {
+      // 未ログイン時はローカルストレージに保存
+      const existingItems = JSON.parse(localStorage.getItem('shopping_list_data') || '[]');
+      const newItems = ingredients.map(ingredient => ({
+        id: crypto.randomUUID(),
+        user_id: 'local',
+        name: ingredient.name,
+        category: ingredient.category,
+        quantity: ingredient.quantity,
+        unit: ingredient.unit,
+        is_purchased: false,
+        notes: ingredient.notes || null,
+        added_date: new Date().toISOString(),
+      }));
+      
+      localStorage.setItem('shopping_list_data', JSON.stringify([...existingItems, ...newItems]));
+      alert(`${ingredients.length}個の材料を買い物リストに追加しました！`);
+    } else {
+      // ログイン時はSupabaseに保存
+      const itemsToInsert = ingredients.map(ingredient => ({
+        user_id: user.id,
+        name: ingredient.name,
+        category: ingredient.category,
+        quantity: ingredient.quantity,
+        unit: ingredient.unit,
+        is_purchased: false,
+        notes: ingredient.notes || null,
+      }));
+
+      const { error } = await supabase
+        .from('shopping_items')
+        .insert(itemsToInsert);
+
+      if (error) {
+        console.error('Error adding to shopping list:', error);
+        alert('買い物リストへの追加に失敗しました');
+      } else {
+        alert(`${ingredients.length}個の材料を買い物リストに追加しました！`);
+      }
+    }
+    
+    setShowShoppingDialog(false);
   };
 
   return (
@@ -505,7 +919,6 @@ export default function RecipeManagement({
                   <p className="mb-4 text-gray-600">
                     ログインしてプレイリストを管理しましょう
                   </p>
-                  {/* 例: <Button onClick={() => openLoginModal()}>ログイン</Button> */}
                 </>
               )}
             </CardContent>
@@ -646,6 +1059,19 @@ export default function RecipeManagement({
                               <div className="flex items-center gap-1">
                                 <Button
                                   size="sm"
+                                  variant="outline"
+                                  onClick={() => handleExtractRecipe(video)}
+                                  disabled={extractingRecipe}
+                                  className="text-green-600 hover:bg-green-50"
+                                >
+                                  {extractingRecipe ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Download className="h-4 w-4" />
+                                  )}
+                                </Button>
+                                <Button
+                                  size="sm"
                                   variant="ghost"
                                   onClick={() =>
                                     handleDeleteVideo(playlist.id, video.id)
@@ -680,6 +1106,118 @@ export default function RecipeManagement({
         isOpen={isAddVideoDialogOpen}
         onClose={() => setIsAddVideoDialogOpen(false)}
         onAddVideo={handleAddVideo}
+      />
+
+      {/* レシピ表示ダイアログ */}
+      <Dialog open={showRecipeDialog} onOpenChange={setShowRecipeDialog}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[700px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Download className="h-5 w-5 text-orange-600" />
+              抽出されたレシピ
+            </DialogTitle>
+            <DialogDescription>
+              動画から抽出された材料と手順です
+            </DialogDescription>
+          </DialogHeader>
+          {extractedRecipe && (
+            <div className="space-y-6 py-4">
+              {/* 基本情報 */}
+              <div className="grid grid-cols-2 gap-4">
+                {extractedRecipe.servings && (
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-gray-600" />
+                    <span className="text-sm">{extractedRecipe.servings}</span>
+                  </div>
+                )}
+                {extractedRecipe.cookingTime && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-gray-600" />
+                    <span className="text-sm">{extractedRecipe.cookingTime}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* 抽出方法の表示 */}
+              <div className="rounded-lg bg-blue-50 p-3">
+                <div className="flex items-center gap-2 text-sm text-blue-700">
+                  <AlertCircle className="h-4 w-4" />
+                  抽出方法: {
+                    extractedRecipe.extractionMethod === 'gemini_video_analysis' ? 'AI動画分析' :
+                    extractedRecipe.extractionMethod === 'gemini_text_analysis' ? 'AIテキスト分析' :
+                    '説明文から抽出'
+                  }
+                </div>
+              </div>
+
+              {/* 材料 */}
+              <div className="space-y-3">
+                <h4 className="flex items-center gap-2 font-semibold">
+                  <Package className="h-4 w-4 text-green-600" />
+                  材料 ({extractedRecipe.ingredients.length}個)
+                </h4>
+                {extractedRecipe.ingredients.length > 0 ? (
+                  <div className="grid gap-2">
+                    {extractedRecipe.ingredients.map((ingredient, index) => (
+                      <div key={index} className="flex items-center gap-2 rounded-lg border bg-green-50 p-3">
+                        <span className="text-sm">{ingredient}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">材料が見つかりませんでした</p>
+                )}
+              </div>
+
+              {/* 手順 */}
+              <div className="space-y-3">
+                <h4 className="flex items-center gap-2 font-semibold">
+                  <List className="h-4 w-4 text-blue-600" />
+                  手順 ({extractedRecipe.steps.length}ステップ)
+                </h4>
+                {extractedRecipe.steps.length > 0 ? (
+                  <div className="space-y-3">
+                    {extractedRecipe.steps.map((step, index) => (
+                      <div key={index} className="flex gap-3 rounded-lg border bg-blue-50 p-3">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
+                          {index + 1}
+                        </div>
+                        <span className="text-sm">{step}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">手順が見つかりませんでした</p>
+                )}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRecipeDialog(false)}>
+              閉じる
+            </Button>
+            {extractedRecipe && extractedRecipe.ingredients.length > 0 && (
+              <Button 
+                onClick={() => {
+                  setShowRecipeDialog(false);
+                  setShowShoppingDialog(true);
+                }}
+                className={buttonVariants({ theme: 'shopping' })}
+              >
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                買い物リストに追加
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 買い物リスト追加ダイアログ */}
+      <AddToShoppingListDialog
+        isOpen={showShoppingDialog}
+        onClose={() => setShowShoppingDialog(false)}
+        extractedRecipe={extractedRecipe}
+        onAddToShoppingList={handleAddToShoppingList}
       />
     </div>
   );
