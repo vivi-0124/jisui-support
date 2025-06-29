@@ -54,6 +54,8 @@ import {
   List,
   LogOut,
   ChefHat,
+  Download,
+  Loader2,
 } from 'lucide-react';
 import IngredientsManagement, {
   Ingredient,
@@ -88,6 +90,16 @@ interface YouTubeVideo {
   duration?: string;
   viewCount?: number;
   publishedAt?: string;
+}
+
+interface ExtractedRecipe {
+  title: string;
+  ingredients: string[];
+  steps: string[];
+  servings?: string;
+  cookingTime?: string;
+  description: string;
+  extractionMethod: 'captions' | 'description' | 'ai_analysis';
 }
 
 // VideoCardPropsも新しいプロップを受け取るように更新
@@ -769,10 +781,13 @@ function VideoCard({
 }: VideoCardProps) {
   const [showDescription, setShowDescription] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [showRecipeDialog, setShowRecipeDialog] = useState(false);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string>('');
   const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [newPlaylistDescription, setNewPlaylistDescription] = useState('');
+  const [extractedRecipe, setExtractedRecipe] = useState<ExtractedRecipe | null>(null);
+  const [extractingRecipe, setExtractingRecipe] = useState(false);
   const { user } = useAuth();
 
   const handleSaveClick = () => {
@@ -780,6 +795,26 @@ function VideoCard({
       onLoginRequired();
     } else {
       setShowSaveDialog(true);
+    }
+  };
+
+  const handleExtractRecipe = async () => {
+    setExtractingRecipe(true);
+    try {
+      const response = await fetch(`/api/youtube/extract-recipe?videoId=${video.videoId}`);
+      const data = await response.json();
+      
+      if (response.ok) {
+        setExtractedRecipe(data.recipe);
+        setShowRecipeDialog(true);
+      } else {
+        alert(data.error || 'レシピの抽出に失敗しました');
+      }
+    } catch (error) {
+      console.error('Recipe extraction error:', error);
+      alert('レシピの抽出中にエラーが発生しました');
+    } finally {
+      setExtractingRecipe(false);
     }
   };
 
@@ -1000,6 +1035,23 @@ function VideoCard({
           </Button>
         </div>
 
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleExtractRecipe}
+            disabled={extractingRecipe}
+            className="flex-1"
+          >
+            {extractingRecipe ? (
+              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+            ) : (
+              <Download className="mr-1 h-3 w-3" />
+            )}
+            材料・手順を取得
+          </Button>
+        </div>
+
         <Dialog open={showDescription} onOpenChange={setShowDescription}>
           <DialogTrigger asChild>
             <Button
@@ -1041,6 +1093,98 @@ function VideoCard({
                 </div>
               </div>
             </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* レシピ表示ダイアログ */}
+        <Dialog open={showRecipeDialog} onOpenChange={setShowRecipeDialog}>
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[700px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Download className="h-5 w-5 text-orange-600" />
+                抽出されたレシピ
+              </DialogTitle>
+              <DialogDescription>
+                動画から抽出された材料と手順です
+              </DialogDescription>
+            </DialogHeader>
+            {extractedRecipe && (
+              <div className="space-y-6 py-4">
+                {/* 基本情報 */}
+                <div className="grid grid-cols-2 gap-4">
+                  {extractedRecipe.servings && (
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-gray-600" />
+                      <span className="text-sm">{extractedRecipe.servings}</span>
+                    </div>
+                  )}
+                  {extractedRecipe.cookingTime && (
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-gray-600" />
+                      <span className="text-sm">{extractedRecipe.cookingTime}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 抽出方法の表示 */}
+                <div className="rounded-lg bg-blue-50 p-3">
+                  <div className="flex items-center gap-2 text-sm text-blue-700">
+                    <AlertCircle className="h-4 w-4" />
+                    抽出方法: {
+                      extractedRecipe.extractionMethod === 'captions' ? '字幕から抽出' :
+                      extractedRecipe.extractionMethod === 'ai_analysis' ? 'AI分析' :
+                      '説明文から抽出'
+                    }
+                  </div>
+                </div>
+
+                {/* 材料 */}
+                <div className="space-y-3">
+                  <h4 className="flex items-center gap-2 font-semibold">
+                    <Package className="h-4 w-4 text-green-600" />
+                    材料 ({extractedRecipe.ingredients.length}個)
+                  </h4>
+                  {extractedRecipe.ingredients.length > 0 ? (
+                    <div className="grid gap-2">
+                      {extractedRecipe.ingredients.map((ingredient, index) => (
+                        <div key={index} className="flex items-center gap-2 rounded-lg border bg-green-50 p-3">
+                          <span className="text-sm">{ingredient}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-sm">材料が見つかりませんでした</p>
+                  )}
+                </div>
+
+                {/* 手順 */}
+                <div className="space-y-3">
+                  <h4 className="flex items-center gap-2 font-semibold">
+                    <List className="h-4 w-4 text-blue-600" />
+                    手順 ({extractedRecipe.steps.length}ステップ)
+                  </h4>
+                  {extractedRecipe.steps.length > 0 ? (
+                    <div className="space-y-3">
+                      {extractedRecipe.steps.map((step, index) => (
+                        <div key={index} className="flex gap-3 rounded-lg border bg-blue-50 p-3">
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
+                            {index + 1}
+                          </div>
+                          <span className="text-sm">{step}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-sm">手順が見つかりませんでした</p>
+                  )}
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowRecipeDialog(false)}>
+                閉じる
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
