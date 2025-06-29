@@ -16,7 +16,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,8 +42,6 @@ import {
   Package,
   AlertCircle,
   Users,
-  ChevronDown,
-  X,
 } from 'lucide-react';
 import {
   buttonVariants,
@@ -54,6 +51,31 @@ import {
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+
+// 定数配列をコンポーネント外に移動
+const CATEGORIES = [
+  '野菜',
+  '肉類',
+  '魚介類',
+  '乳製品',
+  '調味料',
+  '冷凍食品',
+  'その他',
+];
+
+const UNITS = [
+  '個',
+  'g',
+  'kg',
+  'ml',
+  'L',
+  '本',
+  '枚',
+  '袋',
+  'パック',
+  '大さじ',
+  '小さじ',
+];
 
 export interface Video {
   id: string;
@@ -86,19 +108,10 @@ interface ExtractedRecipe {
   servings?: string;
   cookingTime?: string;
   description: string;
-  extractionMethod: 'gemini_video_analysis' | 'gemini_text_analysis' | 'description';
-}
-
-interface ShoppingItem {
-  id: string;
-  user_id: string;
-  name: string;
-  category: string;
-  quantity: number;
-  unit: string;
-  is_purchased: boolean;
-  notes: string | null;
-  added_date: string;
+  extractionMethod:
+    | 'gemini_video_analysis'
+    | 'gemini_text_analysis'
+    | 'description';
 }
 
 interface AddPlaylistButtonProps {
@@ -181,7 +194,9 @@ function AddPlaylistButton({
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="name" className="text-sm font-medium">プレイリスト名 *</Label>
+            <Label htmlFor="name" className="text-sm font-medium">
+              プレイリスト名 *
+            </Label>
             <Input
               id="name"
               value={newPlaylist.name}
@@ -193,7 +208,9 @@ function AddPlaylistButton({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description" className="text-sm font-medium">説明</Label>
+            <Label htmlFor="description" className="text-sm font-medium">
+              説明
+            </Label>
             <textarea
               id="description"
               value={newPlaylist.description || ''}
@@ -202,12 +219,16 @@ function AddPlaylistButton({
               }
               placeholder="プレイリストの説明を入力してください"
               rows={3}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
             />
           </div>
         </div>
         <DialogFooter className="flex-col gap-2 sm:flex-row">
-          <Button variant="outline" onClick={handleCloseDialog} className="w-full sm:w-auto">
+          <Button
+            variant="outline"
+            onClick={handleCloseDialog}
+            className="w-full sm:w-auto"
+          >
             キャンセル
           </Button>
           <Button
@@ -299,7 +320,9 @@ function AddVideoDialog({ isOpen, onClose, onAddVideo }: AddVideoDialogProps) {
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="videoUrl" className="text-sm font-medium">YouTube URL *</Label>
+            <Label htmlFor="videoUrl" className="text-sm font-medium">
+              YouTube URL *
+            </Label>
             <Input
               id="videoUrl"
               value={videoUrl}
@@ -309,7 +332,9 @@ function AddVideoDialog({ isOpen, onClose, onAddVideo }: AddVideoDialogProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="videoTitle" className="text-sm font-medium">動画タイトル（オプション）</Label>
+            <Label htmlFor="videoTitle" className="text-sm font-medium">
+              動画タイトル（オプション）
+            </Label>
             <Input
               id="videoTitle"
               value={videoTitle}
@@ -320,7 +345,11 @@ function AddVideoDialog({ isOpen, onClose, onAddVideo }: AddVideoDialogProps) {
           </div>
         </div>
         <DialogFooter className="flex-col gap-2 sm:flex-row">
-          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="w-full sm:w-auto"
+          >
             キャンセル
           </Button>
           <Button
@@ -340,61 +369,73 @@ interface AddToShoppingListDialogProps {
   isOpen: boolean;
   onClose: () => void;
   extractedRecipe: ExtractedRecipe | null;
-  onAddToShoppingList: (ingredients: { name: string; category: string; quantity: number; unit: string; notes?: string }[]) => void;
+  onAddToShoppingList: (
+    ingredients: {
+      name: string;
+      category: string;
+      quantity: number;
+      unit: string;
+      notes?: string;
+    }[]
+  ) => void;
 }
 
-function AddToShoppingListDialog({ 
-  isOpen, 
-  onClose, 
-  extractedRecipe, 
-  onAddToShoppingList 
+function AddToShoppingListDialog({
+  isOpen,
+  onClose,
+  extractedRecipe,
+  onAddToShoppingList,
 }: AddToShoppingListDialogProps) {
   const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
-  const [ingredientDetails, setIngredientDetails] = useState<Record<string, {
-    category: string;
-    quantity: number;
-    unit: string;
-    notes: string;
-  }>>({});
-
-  const categories = [
-    '野菜',
-    '肉類',
-    '魚介類',
-    '乳製品',
-    '調味料',
-    '冷凍食品',
-    'その他',
-  ];
-
-  const units = ['個', 'g', 'kg', 'ml', 'L', '本', '枚', '袋', 'パック', '大さじ', '小さじ'];
+  const [ingredientDetails, setIngredientDetails] = useState<
+    Record<
+      string,
+      {
+        category: string;
+        quantity: number;
+        unit: string;
+        notes: string;
+      }
+    >
+  >({});
 
   useEffect(() => {
     if (extractedRecipe && isOpen) {
       // 初期化
       setSelectedIngredients([]);
-      const initialDetails: Record<string, any> = {};
-      
+      const initialDetails: Record<
+        string,
+        {
+          category: string;
+          quantity: number;
+          unit: string;
+          notes: string;
+        }
+      > = {};
+
       extractedRecipe.ingredients.forEach((ingredient, index) => {
         const ingredientId = `ingredient-${index}`;
-        
+
         // 材料名から分量と単位を分離
         const parts = ingredient.split(/\s+/);
         let name = ingredient;
         let quantity = 1;
         let unit = '個';
-        
+
         if (parts.length > 1) {
           const lastPart = parts[parts.length - 1];
-          const secondLastPart = parts.length > 2 ? parts[parts.length - 2] : '';
-          
+          const secondLastPart =
+            parts.length > 2 ? parts[parts.length - 2] : '';
+
           // 数量と単位の抽出
-          const quantityMatch = ingredient.match(/(\d+(?:\.\d+)?)\s*(g|kg|ml|L|個|本|枚|袋|パック|大さじ|小さじ|カップ)/);
+          const quantityMatch = ingredient.match(
+            /(\d+(?:\.\d+)?)\s*(g|kg|ml|L|個|本|枚|袋|パック|大さじ|小さじ|カップ)/
+          );
           if (quantityMatch) {
             quantity = parseFloat(quantityMatch[1]);
             unit = quantityMatch[2];
             name = ingredient.replace(quantityMatch[0], '').trim();
-          } else if (units.includes(lastPart)) {
+          } else if (UNITS.includes(lastPart)) {
             unit = lastPart;
             if (!isNaN(parseFloat(secondLastPart))) {
               quantity = parseFloat(secondLastPart);
@@ -404,23 +445,47 @@ function AddToShoppingListDialog({
             }
           }
         }
-        
+
         // カテゴリの推測
         let category = 'その他';
         const lowerName = name.toLowerCase();
-        if (lowerName.includes('肉') || lowerName.includes('豚') || lowerName.includes('牛') || lowerName.includes('鶏')) {
+        if (
+          lowerName.includes('肉') ||
+          lowerName.includes('豚') ||
+          lowerName.includes('牛') ||
+          lowerName.includes('鶏')
+        ) {
           category = '肉類';
-        } else if (lowerName.includes('魚') || lowerName.includes('海老') || lowerName.includes('蟹')) {
+        } else if (
+          lowerName.includes('魚') ||
+          lowerName.includes('海老') ||
+          lowerName.includes('蟹')
+        ) {
           category = '魚介類';
-        } else if (lowerName.includes('牛乳') || lowerName.includes('チーズ') || lowerName.includes('バター')) {
+        } else if (
+          lowerName.includes('牛乳') ||
+          lowerName.includes('チーズ') ||
+          lowerName.includes('バター')
+        ) {
           category = '乳製品';
-        } else if (lowerName.includes('醤油') || lowerName.includes('味噌') || lowerName.includes('塩') || lowerName.includes('砂糖')) {
+        } else if (
+          lowerName.includes('醤油') ||
+          lowerName.includes('味噌') ||
+          lowerName.includes('塩') ||
+          lowerName.includes('砂糖')
+        ) {
           category = '調味料';
-        } else if (lowerName.includes('玉ねぎ') || lowerName.includes('にんじん') || lowerName.includes('じゃがいも') || 
-                   lowerName.includes('トマト') || lowerName.includes('きゅうり') || lowerName.includes('レタス')) {
+        } else if (
+          lowerName.includes('玉ねぎ') ||
+          lowerName.includes('にんじん') ||
+          lowerName.includes('じゃがいも') ||
+          lowerName.includes('トマト') ||
+          lowerName.includes('きゅうり') ||
+          lowerName.includes('レタス')
+        ) {
           category = '野菜';
         }
-        
+
         initialDetails[ingredientId] = {
           category,
           quantity,
@@ -428,26 +493,30 @@ function AddToShoppingListDialog({
           notes: '',
         };
       });
-      
+
       setIngredientDetails(initialDetails);
     }
   }, [extractedRecipe, isOpen]);
 
   const handleIngredientToggle = (ingredientId: string) => {
-    setSelectedIngredients(prev => 
-      prev.includes(ingredientId) 
-        ? prev.filter(id => id !== ingredientId)
+    setSelectedIngredients((prev) =>
+      prev.includes(ingredientId)
+        ? prev.filter((id) => id !== ingredientId)
         : [...prev, ingredientId]
     );
   };
 
-  const handleDetailChange = (ingredientId: string, field: string, value: any) => {
-    setIngredientDetails(prev => ({
+  const handleDetailChange = (
+    ingredientId: string,
+    field: string,
+    value: string | number
+  ) => {
+    setIngredientDetails((prev) => ({
       ...prev,
       [ingredientId]: {
         ...prev[ingredientId],
         [field]: value,
-      }
+      },
     }));
   };
 
@@ -457,26 +526,28 @@ function AddToShoppingListDialog({
       return;
     }
 
-    const ingredientsToAdd = selectedIngredients.map(ingredientId => {
+    const ingredientsToAdd = selectedIngredients.map((ingredientId) => {
       const index = parseInt(ingredientId.split('-')[1]);
       const originalIngredient = extractedRecipe!.ingredients[index];
       const details = ingredientDetails[ingredientId];
-      
+
       // 材料名を抽出（分量と単位を除去）
       let name = originalIngredient;
-      const quantityMatch = originalIngredient.match(/(\d+(?:\.\d+)?)\s*(g|kg|ml|L|個|本|枚|袋|パック|大さじ|小さじ|カップ)/);
+      const quantityMatch = originalIngredient.match(
+        /(\d+(?:\.\d+)?)\s*(g|kg|ml|L|個|本|枚|袋|パック|大さじ|小さじ|カップ)/
+      );
       if (quantityMatch) {
         name = originalIngredient.replace(quantityMatch[0], '').trim();
       } else {
         const parts = originalIngredient.split(/\s+/);
-        if (parts.length > 1 && units.includes(parts[parts.length - 1])) {
+        if (parts.length > 1 && UNITS.includes(parts[parts.length - 1])) {
           name = parts.slice(0, -1).join(' ');
           if (parts.length > 2 && !isNaN(parseFloat(parts[parts.length - 2]))) {
             name = parts.slice(0, -2).join(' ');
           }
         }
       }
-      
+
       return {
         name: name || originalIngredient,
         category: details.category,
@@ -504,15 +575,19 @@ function AddToShoppingListDialog({
             レシピから必要な材料を買い物リストに追加します
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="flex-1 overflow-y-auto">
           <div className="space-y-4">
             {/* レシピ情報 */}
             <div className="rounded-lg bg-blue-50 p-3">
-              <h4 className="font-semibold text-sm">{extractedRecipe.title}</h4>
+              <h4 className="text-sm font-semibold">{extractedRecipe.title}</h4>
               <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-600">
-                {extractedRecipe.servings && <span>👥 {extractedRecipe.servings}</span>}
-                {extractedRecipe.cookingTime && <span>⏱️ {extractedRecipe.cookingTime}</span>}
+                {extractedRecipe.servings && (
+                  <span>👥 {extractedRecipe.servings}</span>
+                )}
+                {extractedRecipe.cookingTime && (
+                  <span>⏱️ {extractedRecipe.cookingTime}</span>
+                )}
               </div>
             </div>
 
@@ -520,7 +595,8 @@ function AddToShoppingListDialog({
             <div className="flex items-center justify-between rounded-lg bg-purple-50 p-3">
               <span className="text-sm font-medium">材料を選択</span>
               <Badge variant="secondary" className="text-xs">
-                {selectedIngredients.length}/{extractedRecipe.ingredients.length}個選択中
+                {selectedIngredients.length}/
+                {extractedRecipe.ingredients.length}個選択中
               </Badge>
             </div>
 
@@ -550,12 +626,16 @@ function AddToShoppingListDialog({
                       <div className="flex items-start gap-3">
                         <Checkbox
                           checked={isSelected}
-                          onCheckedChange={() => handleIngredientToggle(ingredientId)}
+                          onCheckedChange={() =>
+                            handleIngredientToggle(ingredientId)
+                          }
                           className="mt-1 data-[state=checked]:border-purple-500 data-[state=checked]:bg-purple-500"
                         />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm break-words">{ingredient}</div>
-                          <div className="text-xs text-gray-500 mt-1">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium break-words">
+                            {ingredient}
+                          </div>
+                          <div className="mt-1 text-xs text-gray-500">
                             元の表記: {ingredient}
                           </div>
                         </div>
@@ -566,51 +646,85 @@ function AddToShoppingListDialog({
                         <div className="ml-6 space-y-3 border-t border-purple-200 pt-3">
                           {/* カテゴリ */}
                           <div>
-                            <Label className="text-xs font-medium">カテゴリ</Label>
+                            <Label className="text-xs font-medium">
+                              カテゴリ
+                            </Label>
                             <select
                               value={details.category}
-                              onChange={(e) => handleDetailChange(ingredientId, 'category', e.target.value)}
-                              className="mt-1 w-full rounded-md border border-gray-300 px-2 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                              onChange={(e) =>
+                                handleDetailChange(
+                                  ingredientId,
+                                  'category',
+                                  e.target.value
+                                )
+                              }
+                              className="mt-1 w-full rounded-md border border-gray-300 px-2 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
                             >
-                              {categories.map(category => (
-                                <option key={category} value={category}>{category}</option>
+                              {CATEGORIES.map((category) => (
+                                <option key={category} value={category}>
+                                  {category}
+                                </option>
                               ))}
                             </select>
                           </div>
-                          
+
                           {/* 数量と単位 */}
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <Label className="text-xs font-medium">数量</Label>
+                              <Label className="text-xs font-medium">
+                                数量
+                              </Label>
                               <Input
                                 type="number"
                                 min="0.1"
                                 step="0.1"
                                 value={details.quantity}
-                                onChange={(e) => handleDetailChange(ingredientId, 'quantity', parseFloat(e.target.value) || 1)}
+                                onChange={(e) =>
+                                  handleDetailChange(
+                                    ingredientId,
+                                    'quantity',
+                                    parseFloat(e.target.value) || 1
+                                  )
+                                }
                                 className="mt-1 h-9 text-sm"
                               />
                             </div>
                             <div>
-                              <Label className="text-xs font-medium">単位</Label>
+                              <Label className="text-xs font-medium">
+                                単位
+                              </Label>
                               <select
                                 value={details.unit}
-                                onChange={(e) => handleDetailChange(ingredientId, 'unit', e.target.value)}
-                                className="mt-1 h-9 w-full rounded-md border border-gray-300 px-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                                onChange={(e) =>
+                                  handleDetailChange(
+                                    ingredientId,
+                                    'unit',
+                                    e.target.value
+                                  )
+                                }
+                                className="mt-1 h-9 w-full rounded-md border border-gray-300 px-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
                               >
-                                {units.map(unit => (
-                                  <option key={unit} value={unit}>{unit}</option>
+                                {UNITS.map((unit) => (
+                                  <option key={unit} value={unit}>
+                                    {unit}
+                                  </option>
                                 ))}
                               </select>
                             </div>
                           </div>
-                          
+
                           {/* メモ */}
                           <div>
                             <Label className="text-xs font-medium">メモ</Label>
                             <Input
                               value={details.notes}
-                              onChange={(e) => handleDetailChange(ingredientId, 'notes', e.target.value)}
+                              onChange={(e) =>
+                                handleDetailChange(
+                                  ingredientId,
+                                  'notes',
+                                  e.target.value
+                                )
+                              }
                               placeholder="例: 低脂肪、有機栽培"
                               className="mt-1 h-9 text-sm"
                             />
@@ -626,7 +740,11 @@ function AddToShoppingListDialog({
         </div>
 
         <DialogFooter className="flex-col gap-2 border-t pt-4 sm:flex-row">
-          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="w-full sm:w-auto"
+          >
             キャンセル
           </Button>
           <Button
@@ -653,9 +771,9 @@ export default function RecipeManagement({
   const [isAddVideoDialogOpen, setIsAddVideoDialogOpen] = useState(false);
   const [showRecipeDialog, setShowRecipeDialog] = useState(false);
   const [showShoppingDialog, setShowShoppingDialog] = useState(false);
-  const [extractedRecipe, setExtractedRecipe] = useState<ExtractedRecipe | null>(null);
+  const [extractedRecipe, setExtractedRecipe] =
+    useState<ExtractedRecipe | null>(null);
   const [extractingRecipe, setExtractingRecipe] = useState(false);
-  const [currentVideo, setCurrentVideo] = useState<Video | null>(null);
 
   const handleSavePlaylist = async (
     playlistData: Omit<Playlist, 'id' | 'user_id' | 'created_at' | 'updated_at'>
@@ -767,10 +885,7 @@ export default function RecipeManagement({
   };
 
   const handleDeleteVideo = async (playlistId: string, videoId: string) => {
-    const { error } = await supabase
-      .from('videos')
-      .delete()
-      .eq('id', videoId);
+    const { error } = await supabase.from('videos').delete().eq('id', videoId);
 
     if (error) {
       console.error('Error deleting video:', error);
@@ -786,7 +901,6 @@ export default function RecipeManagement({
   };
 
   const handleExtractRecipe = async (video: Video) => {
-    setCurrentVideo(video);
     setExtractingRecipe(true);
     try {
       // YouTube URLから動画IDを抽出
@@ -795,9 +909,11 @@ export default function RecipeManagement({
         throw new Error('動画IDの抽出に失敗しました');
       }
 
-      const response = await fetch(`/api/youtube/extract-recipe?videoId=${videoId}`);
+      const response = await fetch(
+        `/api/youtube/extract-recipe?videoId=${videoId}`
+      );
       const data = await response.json();
-      
+
       if (response.ok) {
         setExtractedRecipe(data.recipe);
         setShowRecipeDialog(true);
@@ -813,16 +929,27 @@ export default function RecipeManagement({
   };
 
   const extractVideoId = (url: string): string | null => {
-    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    const regex =
+      /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
     const match = url.match(regex);
     return match ? match[1] : null;
   };
 
-  const handleAddToShoppingList = async (ingredients: { name: string; category: string; quantity: number; unit: string; notes?: string }[]) => {
+  const handleAddToShoppingList = async (
+    ingredients: {
+      name: string;
+      category: string;
+      quantity: number;
+      unit: string;
+      notes?: string;
+    }[]
+  ) => {
     if (!user) {
       // 未ログイン時はローカルストレージに保存
-      const existingItems = JSON.parse(localStorage.getItem('shopping_list_data') || '[]');
-      const newItems = ingredients.map(ingredient => ({
+      const existingItems = JSON.parse(
+        localStorage.getItem('shopping_list_data') || '[]'
+      );
+      const newItems = ingredients.map((ingredient) => ({
         id: crypto.randomUUID(),
         user_id: 'local',
         name: ingredient.name,
@@ -833,12 +960,15 @@ export default function RecipeManagement({
         notes: ingredient.notes || null,
         added_date: new Date().toISOString(),
       }));
-      
-      localStorage.setItem('shopping_list_data', JSON.stringify([...existingItems, ...newItems]));
+
+      localStorage.setItem(
+        'shopping_list_data',
+        JSON.stringify([...existingItems, ...newItems])
+      );
       alert(`${ingredients.length}個の材料を買い物リストに追加しました！`);
     } else {
       // ログイン時はSupabaseに保存
-      const itemsToInsert = ingredients.map(ingredient => ({
+      const itemsToInsert = ingredients.map((ingredient) => ({
         user_id: user.id,
         name: ingredient.name,
         category: ingredient.category,
@@ -859,7 +989,7 @@ export default function RecipeManagement({
         alert(`${ingredients.length}個の材料を買い物リストに追加しました！`);
       }
     }
-    
+
     setShowShoppingDialog(false);
   };
 
@@ -893,7 +1023,9 @@ export default function RecipeManagement({
             editingPlaylist={editingPlaylist}
             onEditComplete={handleEditComplete}
           >
-            <Button className={`w-full sm:w-auto ${buttonVariants({ theme: 'recipes' })}`}>
+            <Button
+              className={`w-full sm:w-auto ${buttonVariants({ theme: 'recipes' })}`}
+            >
               <Plus className="mr-2 h-4 w-4" />
               プレイリスト作成
             </Button>
@@ -920,7 +1052,9 @@ export default function RecipeManagement({
                     editingPlaylist={editingPlaylist}
                     onEditComplete={handleEditComplete}
                   >
-                    <Button className={`w-full sm:w-auto ${buttonVariants({ theme: 'recipes' })}`}>
+                    <Button
+                      className={`w-full sm:w-auto ${buttonVariants({ theme: 'recipes' })}`}
+                    >
                       <Plus className="mr-2 h-4 w-4" />
                       プレイリスト作成
                     </Button>
@@ -950,7 +1084,7 @@ export default function RecipeManagement({
                 <Card className={cardVariants({ theme: 'recipes' })}>
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
+                      <div className="min-w-0 flex-1">
                         <AccordionTrigger className="p-0 hover:no-underline [&>svg]:h-4 [&>svg]:w-4">
                           <div className="flex flex-col items-start gap-2 text-left">
                             <CardTitle className="text-base sm:text-lg">
@@ -971,7 +1105,11 @@ export default function RecipeManagement({
                       <div className="flex items-center gap-1">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                            >
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -1035,10 +1173,10 @@ export default function RecipeManagement({
                               className="flex items-start gap-3 rounded-lg bg-gray-50 p-3 transition-colors hover:bg-gray-100"
                             >
                               {/* 番号 */}
-                              <div className="flex h-6 w-6 items-center justify-center rounded bg-blue-100 text-xs font-mono text-blue-600 sm:h-8 sm:w-8 sm:text-sm">
+                              <div className="flex h-6 w-6 items-center justify-center rounded bg-blue-100 font-mono text-xs text-blue-600 sm:h-8 sm:w-8 sm:text-sm">
                                 {index + 1}
                               </div>
-                              
+
                               {/* サムネイル */}
                               <a
                                 href={video.url}
@@ -1058,7 +1196,7 @@ export default function RecipeManagement({
                                   }}
                                 />
                               </a>
-                              
+
                               {/* 動画情報 */}
                               <div className="min-w-0 flex-1">
                                 <h4 className="line-clamp-2 text-xs font-medium sm:text-sm">
@@ -1078,7 +1216,7 @@ export default function RecipeManagement({
                                   </span>
                                 </div>
                               </div>
-                              
+
                               {/* アクションボタン */}
                               <div className="flex flex-col gap-1 sm:flex-row">
                                 <Button
@@ -1158,13 +1296,17 @@ export default function RecipeManagement({
                   {extractedRecipe.servings && (
                     <div className="flex items-center gap-2">
                       <Users className="h-4 w-4 text-gray-600" />
-                      <span className="text-sm">{extractedRecipe.servings}</span>
+                      <span className="text-sm">
+                        {extractedRecipe.servings}
+                      </span>
                     </div>
                   )}
                   {extractedRecipe.cookingTime && (
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-gray-600" />
-                      <span className="text-sm">{extractedRecipe.cookingTime}</span>
+                      <span className="text-sm">
+                        {extractedRecipe.cookingTime}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -1173,11 +1315,14 @@ export default function RecipeManagement({
                 <div className="rounded-lg bg-blue-50 p-3">
                   <div className="flex items-center gap-2 text-sm text-blue-700">
                     <AlertCircle className="h-4 w-4" />
-                    抽出方法: {
-                      extractedRecipe.extractionMethod === 'gemini_video_analysis' ? 'AI動画分析' :
-                      extractedRecipe.extractionMethod === 'gemini_text_analysis' ? 'AIテキスト分析' :
-                      '説明文から抽出'
-                    }
+                    抽出方法:{' '}
+                    {extractedRecipe.extractionMethod ===
+                    'gemini_video_analysis'
+                      ? 'AI動画分析'
+                      : extractedRecipe.extractionMethod ===
+                          'gemini_text_analysis'
+                        ? 'AIテキスト分析'
+                        : '説明文から抽出'}
                   </div>
                 </div>
 
@@ -1190,13 +1335,20 @@ export default function RecipeManagement({
                   {extractedRecipe.ingredients.length > 0 ? (
                     <div className="space-y-2">
                       {extractedRecipe.ingredients.map((ingredient, index) => (
-                        <div key={index} className="flex items-center gap-2 rounded-lg border bg-green-50 p-3">
-                          <span className="text-sm break-words">{ingredient}</span>
+                        <div
+                          key={index}
+                          className="flex items-center gap-2 rounded-lg border bg-green-50 p-3"
+                        >
+                          <span className="text-sm break-words">
+                            {ingredient}
+                          </span>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-gray-500 text-sm">材料が見つかりませんでした</p>
+                    <p className="text-sm text-gray-500">
+                      材料が見つかりませんでした
+                    </p>
                   )}
                 </div>
 
@@ -1209,7 +1361,10 @@ export default function RecipeManagement({
                   {extractedRecipe.steps.length > 0 ? (
                     <div className="space-y-3">
                       {extractedRecipe.steps.map((step, index) => (
-                        <div key={index} className="flex gap-3 rounded-lg border bg-blue-50 p-3">
+                        <div
+                          key={index}
+                          className="flex gap-3 rounded-lg border bg-blue-50 p-3"
+                        >
                           <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
                             {index + 1}
                           </div>
@@ -1218,18 +1373,24 @@ export default function RecipeManagement({
                       ))}
                     </div>
                   ) : (
-                    <p className="text-gray-500 text-sm">手順が見つかりませんでした</p>
+                    <p className="text-sm text-gray-500">
+                      手順が見つかりませんでした
+                    </p>
                   )}
                 </div>
               </div>
             </div>
           )}
           <DialogFooter className="flex-col gap-2 border-t pt-4 sm:flex-row">
-            <Button variant="outline" onClick={() => setShowRecipeDialog(false)} className="w-full sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={() => setShowRecipeDialog(false)}
+              className="w-full sm:w-auto"
+            >
               閉じる
             </Button>
             {extractedRecipe && extractedRecipe.ingredients.length > 0 && (
-              <Button 
+              <Button
                 onClick={() => {
                   setShowRecipeDialog(false);
                   setShowShoppingDialog(true);

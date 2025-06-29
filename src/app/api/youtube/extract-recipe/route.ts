@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { createClient } from '@/utils/supabase/server';
 
 interface YouTubeVideoDetailsResponse {
   items: Array<{
@@ -25,8 +26,20 @@ interface ExtractedRecipe {
   servings?: string;
   cookingTime?: string;
   description: string;
-  extractionMethod: 'gemini_video_analysis' | 'gemini_text_analysis' | 'description';
+  extractionMethod:
+    | 'gemini_video_analysis'
+    | 'gemini_text_analysis'
+    | 'description'
+    | 'database';
 }
+
+// データベース保存用の型
+type RecipeForDB = Omit<ExtractedRecipe, 'extractionMethod'> & {
+  extractionMethod:
+    | 'gemini_video_analysis'
+    | 'gemini_text_analysis'
+    | 'description';
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -34,10 +47,42 @@ export async function GET(request: NextRequest) {
     const videoId = searchParams.get('videoId');
 
     if (!videoId) {
-      return NextResponse.json(
-        { error: '動画IDが必要です' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: '動画IDが必要です' }, { status: 400 });
+    }
+
+    const supabase = createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    // 1. データベースでレシピを検索 (ログインしている場合)
+    if (user) {
+      const { data: dbRecipe, error: dbError } = await supabase
+        .from('extracted_recipes')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('video_id', videoId)
+        .single();
+
+      if (dbError && dbError.code !== 'PGRST116') {
+        console.error('DB読み込みエラー:', dbError);
+      }
+
+      if (dbRecipe) {
+        console.log('レシピをデータベースから取得しました');
+        return NextResponse.json({
+          recipe: {
+            title: dbRecipe.title,
+            ingredients: dbRecipe.ingredients || [],
+            steps: dbRecipe.steps || [],
+            servings: dbRecipe.servings,
+            cookingTime: dbRecipe.cooking_time,
+            description: dbRecipe.description || '',
+            extractionMethod: 'database',
+          } as ExtractedRecipe,
+        });
+      }
     }
 
     const youtubeApiKey = process.env.YOUTUBE_API_KEY;
@@ -50,7 +95,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 1. 動画の基本情報を取得
+    // 2. 動画の基本情報を取得
     const videoDetails = await getVideoDetails(videoId, youtubeApiKey);
     if (!videoDetails) {
       return NextResponse.json(
@@ -61,7 +106,7 @@ export async function GET(request: NextRequest) {
 
     let extractedRecipe: ExtractedRecipe;
 
-    // 2. Gemini APIが利用可能な場合は動画分析を試行
+    // 3. Gemini APIが利用可能な場合は動画分析を試行
     if (geminiApiKey) {
       try {
         console.log('Gemini APIで動画分析を開始...');
@@ -72,8 +117,11 @@ export async function GET(request: NextRequest) {
         );
         console.log('Gemini APIで動画分析完了');
       } catch (geminiError) {
-        console.log('Gemini動画分析失敗、テキスト分析にフォールバック:', geminiError);
-        
+        console.log(
+          'Gemini動画分析失敗、テキスト分析にフォールバック:',
+          geminiError
+        );
+
         // 動画分析が失敗した場合はテキスト分析を試行
         try {
           extractedRecipe = await analyzeTextWithGemini(
@@ -97,6 +145,37 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // 4. 分析結果をデータベースに保存 (ログインしている場合)
+    if (user && videoDetails) {
+      try {
+        const { error: saveError } = await supabase
+          .from('extracted_recipes')
+          .insert({
+            user_id: user.id,
+            video_id: videoId,
+            title: extractedRecipe.title,
+            ingredients: extractedRecipe.ingredients,
+            steps: extractedRecipe.steps,
+            servings: extractedRecipe.servings,
+            cooking_time: extractedRecipe.cookingTime,
+            description: videoDetails.description,
+            extraction_method: (extractedRecipe as RecipeForDB)
+              .extractionMethod,
+            video_url: `https://www.youtube.com/watch?v=${videoId}`,
+            video_title: videoDetails.title,
+            video_thumbnail: videoDetails.thumbnail,
+          });
+
+        if (saveError) {
+          console.error('DB保存エラー:', saveError);
+        } else {
+          console.log('レシピをデータベースに保存しました');
+        }
+      } catch (e) {
+        console.error('DB保存中に予期せぬエラー:', e);
+      }
+    }
+
     return NextResponse.json({ recipe: extractedRecipe });
   } catch (error) {
     console.error('レシピ抽出エラー:', error);
@@ -110,27 +189,34 @@ export async function GET(request: NextRequest) {
 async function getVideoDetails(videoId: string, apiKey: string) {
   const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${apiKey}`;
   const response = await fetch(detailsUrl);
-  
+
   if (!response.ok) {
     throw new Error('動画詳細の取得に失敗しました');
   }
 
   const data: YouTubeVideoDetailsResponse = await response.json();
-  
+
   if (!data.items || data.items.length === 0) {
     return null;
   }
 
+  const snippet = data.items[0].snippet;
   return {
-    title: data.items[0].snippet.title,
-    description: data.items[0].snippet.description,
-    channelTitle: data.items[0].snippet.channelTitle,
+    title: snippet.title,
+    description: snippet.description,
+    channelTitle: snippet.channelTitle,
+    thumbnail: snippet.thumbnails.medium.url,
   };
 }
 
 async function analyzeVideoWithGemini(
   videoId: string,
-  videoDetails: any,
+  videoDetails: {
+    title: string;
+    description: string;
+    channelTitle: string;
+    thumbnail: string;
+  },
   apiKey: string
 ): Promise<ExtractedRecipe> {
   const genAI = new GoogleGenerativeAI(apiKey);
@@ -175,19 +261,19 @@ async function analyzeVideoWithGemini(
     // Gemini 1.5 Proは動画URLを直接分析できる
     const result = await model.generateContent([
       {
-        text: prompt
+        text: prompt,
       },
       {
         fileData: {
-          mimeType: "video/*",
-          fileUri: videoUrl
-        }
-      }
+          mimeType: 'video/*',
+          fileUri: videoUrl,
+        },
+      },
     ]);
 
     const response = await result.response;
     const text = response.text();
-    
+
     // JSONレスポンスをパース
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
@@ -212,7 +298,12 @@ async function analyzeVideoWithGemini(
 }
 
 async function analyzeTextWithGemini(
-  videoDetails: any,
+  videoDetails: {
+    title: string;
+    description: string;
+    channelTitle: string;
+    thumbnail: string;
+  },
   apiKey: string
 ): Promise<ExtractedRecipe> {
   const genAI = new GoogleGenerativeAI(apiKey);
@@ -255,7 +346,7 @@ async function analyzeTextWithGemini(
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
-    
+
     // JSONレスポンスをパース
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
@@ -279,14 +370,20 @@ async function analyzeTextWithGemini(
   }
 }
 
-function extractRecipeFromDescription(title: string, description: string): ExtractedRecipe {
-  const lines = description.split('\n').map(line => line.trim()).filter(line => line);
-  
+function extractRecipeFromDescription(
+  title: string,
+  description: string
+): ExtractedRecipe {
+  const lines = description
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line);
+
   const ingredients: string[] = [];
   const steps: string[] = [];
   let servings: string | undefined;
   let cookingTime: string | undefined;
-  
+
   let currentSection = '';
   let stepCounter = 0;
 
@@ -299,10 +396,15 @@ function extractRecipeFromDescription(title: string, description: string): Extra
       currentSection = 'ingredients';
       continue;
     }
-    
-    if (lowerLine.includes('作り方') || lowerLine.includes('手順') || 
-        lowerLine.includes('レシピ') || lowerLine.includes('method') || 
-        lowerLine.includes('instruction') || lowerLine.includes('step')) {
+
+    if (
+      lowerLine.includes('作り方') ||
+      lowerLine.includes('手順') ||
+      lowerLine.includes('レシピ') ||
+      lowerLine.includes('method') ||
+      lowerLine.includes('instruction') ||
+      lowerLine.includes('step')
+    ) {
       currentSection = 'steps';
       stepCounter = 0;
       continue;
@@ -318,7 +420,12 @@ function extractRecipeFromDescription(title: string, description: string): Extra
     }
 
     // 調理時間の抽出
-    if (lowerLine.includes('分') && (lowerLine.includes('時間') || lowerLine.includes('調理') || lowerLine.includes('time'))) {
+    if (
+      lowerLine.includes('分') &&
+      (lowerLine.includes('時間') ||
+        lowerLine.includes('調理') ||
+        lowerLine.includes('time'))
+    ) {
       const timeMatch = line.match(/(\d+)分|(\d+)\s*min/i);
       if (timeMatch) {
         cookingTime = timeMatch[1] || timeMatch[2] + '分';
@@ -328,11 +435,17 @@ function extractRecipeFromDescription(title: string, description: string): Extra
 
     // 材料の抽出
     if (currentSection === 'ingredients') {
-      if (line.match(/[・•\-\*]/) || 
-          line.match(/\d+/) || 
-          line.match(/(g|ml|個|本|枚|袋|パック|大さじ|小さじ|カップ|適量|少々)/)) {
+      if (
+        line.match(/[・•\-\*]/) ||
+        line.match(/\d+/) ||
+        line.match(/(g|ml|個|本|枚|袋|パック|大さじ|小さじ|カップ|適量|少々)/)
+      ) {
         const cleanedLine = line.replace(/^[・•\-\*\s]+/, '');
-        if (cleanedLine && !cleanedLine.includes('http') && cleanedLine.length < 100) {
+        if (
+          cleanedLine &&
+          !cleanedLine.includes('http') &&
+          cleanedLine.length < 100
+        ) {
           ingredients.push(cleanedLine);
         }
       }
@@ -340,16 +453,20 @@ function extractRecipeFromDescription(title: string, description: string): Extra
 
     // 手順の抽出
     if (currentSection === 'steps') {
-      if (line.match(/^\d+[\.．\)）]/) || 
-          line.match(/[・•\-\*]/) ||
-          (stepCounter < 20 && line.length > 10 && line.length < 200)) {
-        
+      if (
+        line.match(/^\d+[\.．\)）]/) ||
+        line.match(/[・•\-\*]/) ||
+        (stepCounter < 20 && line.length > 10 && line.length < 200)
+      ) {
         let cleanedLine = line.replace(/^\d+[\.．\)）\s]*/, '');
         cleanedLine = cleanedLine.replace(/^[・•\-\*\s]+/, '');
-        
-        if (cleanedLine && !cleanedLine.includes('http') && 
-            !cleanedLine.includes('チャンネル') && 
-            !cleanedLine.includes('登録')) {
+
+        if (
+          cleanedLine &&
+          !cleanedLine.includes('http') &&
+          !cleanedLine.includes('チャンネル') &&
+          !cleanedLine.includes('登録')
+        ) {
           steps.push(cleanedLine);
           stepCounter++;
         }
@@ -377,9 +494,26 @@ function extractRecipeFromDescription(title: string, description: string): Extra
 function extractIngredientsFromTitle(title: string): string[] {
   const ingredients: string[] = [];
   const commonIngredients = [
-    '玉ねぎ', 'にんじん', 'じゃがいも', '豚肉', '牛肉', '鶏肉',
-    '卵', '米', 'パン', 'パスタ', 'トマト', 'きゅうり', 'レタス',
-    '醤油', '味噌', '塩', '砂糖', '油', 'バター', 'チーズ'
+    '玉ねぎ',
+    'にんじん',
+    'じゃがいも',
+    '豚肉',
+    '牛肉',
+    '鶏肉',
+    '卵',
+    '米',
+    'パン',
+    'パスタ',
+    'トマト',
+    'きゅうり',
+    'レタス',
+    '醤油',
+    '味噌',
+    '塩',
+    '砂糖',
+    '油',
+    'バター',
+    'チーズ',
   ];
 
   for (const ingredient of commonIngredients) {

@@ -1,16 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
-// 環境変数の型定義
-// declare global {
-//   namespace NodeJS {
-//     interface ProcessEnv {
-//       NEXT_PUBLIC_SUPABASE_URL: string
-//       NEXT_PUBLIC_SUPABASE_ANON_KEY: string
-//     }
-//   }
-// }
+// App Router クライアントコンポーネント用 Supabase クライアント
+// createBrowserClient を使用することで、認証トークンが Cookie に保管され
+// サーバーサイド（Middleware や Route Handlers）の createServerClient からも
+// 同一セッションを参照できるようになります。
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);

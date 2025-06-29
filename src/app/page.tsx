@@ -144,14 +144,12 @@ export default function JisuiSupport() {
           localStorage.getItem(localIngredientsKey) || '[]'
         );
         if (localIngredients.length > 0) {
-          const { error } = await supabase
-            .from('ingredients')
-            .insert(
-              localIngredients.map((i: Ingredient) => ({
-                ...i,
-                user_id: user.id,
-              }))
-            );
+          const { error } = await supabase.from('ingredients').insert(
+            localIngredients.map((i: Ingredient) => ({
+              ...i,
+              user_id: user.id,
+            }))
+          );
           if (!error) {
             localStorage.removeItem(localIngredientsKey);
             needsReload = true;
@@ -161,14 +159,12 @@ export default function JisuiSupport() {
           localStorage.getItem(localShoppingKey) || '[]'
         );
         if (localShoppingItems.length > 0) {
-          const { error } = await supabase
-            .from('shopping_items')
-            .insert(
-              localShoppingItems.map((i: ShoppingItem) => ({
-                ...i,
-                user_id: user.id,
-              }))
-            );
+          const { error } = await supabase.from('shopping_items').insert(
+            localShoppingItems.map((i: ShoppingItem) => ({
+              ...i,
+              user_id: user.id,
+            }))
+          );
           if (!error) {
             localStorage.removeItem(localShoppingKey);
             needsReload = true;
@@ -797,7 +793,8 @@ function VideoCard({
   const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [newPlaylistDescription, setNewPlaylistDescription] = useState('');
-  const [extractedRecipe, setExtractedRecipe] = useState<ExtractedRecipe | null>(null);
+  const [extractedRecipe, setExtractedRecipe] =
+    useState<ExtractedRecipe | null>(null);
   const [extractingRecipe, setExtractingRecipe] = useState(false);
   const { user } = useAuth();
 
@@ -812,9 +809,11 @@ function VideoCard({
   const handleExtractRecipe = async () => {
     setExtractingRecipe(true);
     try {
-      const response = await fetch(`/api/youtube/extract-recipe?videoId=${video.videoId}`);
+      const response = await fetch(
+        `/api/youtube/extract-recipe?videoId=${video.videoId}`
+      );
       const data = await response.json();
-      
+
       if (response.ok) {
         setExtractedRecipe(data.recipe);
         setShowRecipeDialog(true);
@@ -1088,7 +1087,7 @@ function VideoCard({
                     動画の説明
                   </h4>
                   {video.description ? (
-                    <div className="whitespace-pre-line rounded-lg border bg-gray-50 p-4 text-sm leading-relaxed">
+                    <div className="rounded-lg border bg-gray-50 p-4 text-sm leading-relaxed whitespace-pre-line">
                       {video.description}
                     </div>
                   ) : (
@@ -1126,13 +1125,17 @@ function VideoCard({
                   {extractedRecipe.servings && (
                     <div className="flex items-center gap-2">
                       <Users className="h-4 w-4 text-gray-600" />
-                      <span className="text-sm">{extractedRecipe.servings}</span>
+                      <span className="text-sm">
+                        {extractedRecipe.servings}
+                      </span>
                     </div>
                   )}
                   {extractedRecipe.cookingTime && (
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-gray-600" />
-                      <span className="text-sm">{extractedRecipe.cookingTime}</span>
+                      <span className="text-sm">
+                        {extractedRecipe.cookingTime}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -1141,11 +1144,12 @@ function VideoCard({
                 <div className="rounded-lg bg-blue-50 p-3">
                   <div className="flex items-center gap-2 text-sm text-blue-700">
                     <AlertCircle className="h-4 w-4" />
-                    抽出方法: {
-                      extractedRecipe.extractionMethod === 'captions' ? '字幕から抽出' :
-                      extractedRecipe.extractionMethod === 'ai_analysis' ? 'AI分析' :
-                      '説明文から抽出'
-                    }
+                    抽出方法:{' '}
+                    {extractedRecipe.extractionMethod === 'captions'
+                      ? '字幕から抽出'
+                      : extractedRecipe.extractionMethod === 'ai_analysis'
+                        ? 'AI分析'
+                        : '説明文から抽出'}
                   </div>
                 </div>
 
@@ -1158,13 +1162,18 @@ function VideoCard({
                   {extractedRecipe.ingredients.length > 0 ? (
                     <div className="grid gap-2">
                       {extractedRecipe.ingredients.map((ingredient, index) => (
-                        <div key={index} className="flex items-center gap-2 rounded-lg border bg-green-50 p-3">
+                        <div
+                          key={index}
+                          className="flex items-center gap-2 rounded-lg border bg-green-50 p-3"
+                        >
                           <span className="text-sm">{ingredient}</span>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-gray-500 text-sm">材料が見つかりませんでした</p>
+                    <p className="text-sm text-gray-500">
+                      材料が見つかりませんでした
+                    </p>
                   )}
                 </div>
 
@@ -1177,7 +1186,10 @@ function VideoCard({
                   {extractedRecipe.steps.length > 0 ? (
                     <div className="space-y-3">
                       {extractedRecipe.steps.map((step, index) => (
-                        <div key={index} className="flex gap-3 rounded-lg border bg-blue-50 p-3">
+                        <div
+                          key={index}
+                          className="flex gap-3 rounded-lg border bg-blue-50 p-3"
+                        >
                           <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
                             {index + 1}
                           </div>
@@ -1186,13 +1198,18 @@ function VideoCard({
                       ))}
                     </div>
                   ) : (
-                    <p className="text-gray-500 text-sm">手順が見つかりませんでした</p>
+                    <p className="text-sm text-gray-500">
+                      手順が見つかりませんでした
+                    </p>
                   )}
                 </div>
               </div>
             )}
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowRecipeDialog(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setShowRecipeDialog(false)}
+              >
                 閉じる
               </Button>
             </DialogFooter>
