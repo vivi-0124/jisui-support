@@ -53,12 +53,14 @@ import {
   Save,
   List,
   LogOut,
+  ChefHat,
 } from 'lucide-react';
 import IngredientsManagement, {
   Ingredient,
 } from '@/components/ingredients-management';
 import ShoppingList from '@/components/shopping-list';
 import RecipeManagement from '@/components/recipe-management';
+import CookingManagement from '@/components/cooking-management';
 import {
   gradientButtonVariants,
   headerVariants,
@@ -87,19 +89,6 @@ interface YouTubeVideo {
   viewCount?: number;
   publishedAt?: string;
 }
-
-// InventoryItemを削除し、Ingredientをインポート
-// interface InventoryItem {
-//   id: string;
-//   ingredient_name: string;
-//   quantity: number;
-//   unit: string;
-//   expiration_date?: string;
-// }
-
-// Playlist, PlaylistVideoの型定義はrecipe-management.tsxからインポートするため、ここから削除
-// interface PlaylistVideo { /* ... */ }
-// interface Playlist { /* ... */ }
 
 // VideoCardPropsも新しいプロップを受け取るように更新
 interface VideoCardProps {
@@ -345,6 +334,16 @@ export default function JisuiSupport() {
               </Button>
               <Button
                 size="lg"
+                onClick={() => setActiveTab('cooking')}
+                className={gradientButtonVariants({
+                  theme: 'search',
+                  size: 'lg',
+                })}
+              >
+                <ChefHat className="h-6 w-6 text-white" />
+              </Button>
+              <Button
+                size="lg"
                 onClick={() => setActiveTab('shopping')}
                 className={gradientButtonVariants({
                   theme: 'shopping',
@@ -403,6 +402,14 @@ export default function JisuiSupport() {
             />
           </TabsContent>
 
+          {/* Cooking Tab Content */}
+          <TabsContent value="cooking" className="space-y-6">
+            <CookingManagement
+              ingredients={ingredients}
+              setIngredients={setIngredients}
+            />
+          </TabsContent>
+
           {/* Shopping List Tab Content */}
           <TabsContent value="shopping" className="space-y-6">
             <ShoppingList
@@ -419,7 +426,7 @@ export default function JisuiSupport() {
           </TabsContent>
 
           {/* Bottom Navigation */}
-          <TabsList className="fixed right-0 bottom-0 left-0 grid h-16 w-full grid-cols-4 rounded-none border-t bg-white p-1 shadow-lg">
+          <TabsList className="fixed right-0 bottom-0 left-0 grid h-16 w-full grid-cols-5 rounded-none border-t bg-white p-1 shadow-lg">
             <TabsTrigger
               value="home"
               className={`flex flex-col items-center gap-1 px-2 py-1 text-xs data-[state=active]:text-gray-600`}
@@ -433,6 +440,13 @@ export default function JisuiSupport() {
             >
               <Package className="h-4 w-4" />
               材料管理
+            </TabsTrigger>
+            <TabsTrigger
+              value="cooking"
+              className={`flex flex-col items-center gap-1 px-2 py-1 text-xs data-[state=active]:text-orange-600`}
+            >
+              <ChefHat className="h-4 w-4" />
+              料理する
             </TabsTrigger>
             <TabsTrigger
               value="shopping"
