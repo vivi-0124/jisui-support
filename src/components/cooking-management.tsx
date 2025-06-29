@@ -59,11 +59,12 @@ interface UsedIngredient {
 }
 
 interface StartCookingButtonProps {
+  ingredients: Ingredient[];
   onSave: (session: Omit<CookingSession, 'id' | 'createdAt'>) => void;
   children: React.ReactNode;
 }
 
-function StartCookingButton({ onSave, children }: StartCookingButtonProps) {
+function StartCookingButton({ ingredients, onSave, children }: StartCookingButtonProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dishName, setDishName] = useState('');
   const [servings, setServings] = useState(1);
@@ -412,7 +413,7 @@ export default function CookingManagement({
 
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">料理する</h2>
-        <StartCookingButton onSave={handleStartCooking}>
+        <StartCookingButton ingredients={ingredients} onSave={handleStartCooking}>
           <Button className={buttonVariants({ theme: 'search' })}>
             <ChefHat className="mr-2 h-4 w-4" />
             料理を開始
