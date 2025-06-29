@@ -115,15 +115,21 @@ export default function JisuiSupport() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<YouTubeVideo[]>([]);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const { user, loading, supabase } = useAuth();
   const [playlists, setPlaylists] = useState<RecipePlaylist[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
 
+  // クライアントサイドでのマウント状態を管理
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // データ読み込み & 移行
   useEffect(() => {
-    if (loading) return;
+    if (loading || !mounted) return;
 
     const localIngredientsKey = 'ingredients_data';
     const localShoppingKey = 'shopping_list_data';
@@ -194,15 +200,15 @@ export default function JisuiSupport() {
     };
 
     manageData();
-  }, [user, loading, supabase]);
+  }, [user, loading, supabase, mounted]);
 
   // ローカルストレージへの書き込み
   useEffect(() => {
-    if (!user && !loading) {
+    if (!user && !loading && mounted) {
       localStorage.setItem('ingredients_data', JSON.stringify(ingredients));
       localStorage.setItem('shopping_list_data', JSON.stringify(shoppingItems));
     }
-  }, [ingredients, shoppingItems, user, loading]);
+  }, [ingredients, shoppingItems, user, loading, mounted]);
 
   // Supabaseからプレイリストを読み込み
   useEffect(() => {
@@ -235,11 +241,16 @@ export default function JisuiSupport() {
       }
     };
 
-    if (!loading) {
+    if (!loading && mounted) {
       // 認証状態のロードが完了したらフェッチを開始
       fetchPlaylists();
     }
-  }, [user, loading, supabase]);
+  }, [user, loading, supabase, mounted]);
+
+  // マウント前は何も表示しない
+  if (!mounted) {
+    return null;
+  }
 
   if (loading) {
     return (
