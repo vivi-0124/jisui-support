@@ -68,25 +68,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 2. 字幕データを取得を試行
+    // 2. 字幕データの確認（実際の取得はスキップ）
     let extractedRecipe: ExtractedRecipe;
     
     try {
       const captions = await getCaptions(videoId, apiKey);
       if (captions && captions.length > 0) {
-        // 字幕から抽出
-        const captionText = await getCaptionText(captions[0].id, apiKey);
-        extractedRecipe = await extractRecipeFromCaptions(
-          videoDetails.title,
-          captionText,
-          videoDetails.description
-        );
-        extractedRecipe.extractionMethod = 'captions';
+        // 字幕が存在することを確認したが、内容取得は現在未対応
+        console.log('字幕が利用可能ですが、内容取得は未実装のため説明文から抽出します');
+        throw new Error('字幕内容取得は未実装');
       } else {
         throw new Error('字幕が見つかりません');
       }
     } catch (captionError) {
-      console.log('字幕取得失敗、説明文から抽出します:', captionError);
       // 字幕が取得できない場合は説明文から抽出
       extractedRecipe = extractRecipeFromDescription(
         videoDetails.title,
@@ -171,8 +165,8 @@ async function getCaptionText(captionId: string, apiKey: string): Promise<string
   // 実際の実装では、youtube-dl-pythonやytdl-coreなどのライブラリを使用するか、
   // サードパーティのサービスを利用する必要があります
   
-  // ここでは模擬的な実装を示します
-  throw new Error('字幕内容の取得は現在サポートされていません');
+  // 現在は未実装のため、空文字列を返す
+  return '';
 }
 
 async function extractRecipeFromCaptions(
@@ -180,6 +174,11 @@ async function extractRecipeFromCaptions(
   captionText: string,
   description: string
 ): Promise<ExtractedRecipe> {
+  // 字幕テキストが空の場合は説明文から抽出
+  if (!captionText || captionText.trim() === '') {
+    return extractRecipeFromDescription(title, description);
+  }
+
   // 字幕テキストからレシピを抽出する処理
   const ingredients: string[] = [];
   const steps: string[] = [];
