@@ -43,6 +43,8 @@ import {
   Package,
   AlertCircle,
   Users,
+  ChevronDown,
+  X,
 } from 'lucide-react';
 import {
   buttonVariants,
@@ -166,20 +168,20 @@ function AddPlaylistButton({
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="mx-4 w-[calc(100vw-2rem)] max-w-md rounded-lg sm:mx-auto sm:w-full">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-lg">
             {editingPlaylist
               ? 'プレイリストを編集'
               : '新しいプレイリストを作成'}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm">
             プレイリストの詳細情報を入力してください。
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div>
-            <Label htmlFor="name">プレイリスト名 *</Label>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="name" className="text-sm font-medium">プレイリスト名 *</Label>
             <Input
               id="name"
               value={newPlaylist.name}
@@ -187,10 +189,11 @@ function AddPlaylistButton({
                 setNewPlaylist({ ...newPlaylist, name: e.target.value })
               }
               placeholder="例: お気に入りの料理動画"
+              className="h-11"
             />
           </div>
-          <div>
-            <Label htmlFor="description">説明</Label>
+          <div className="space-y-2">
+            <Label htmlFor="description" className="text-sm font-medium">説明</Label>
             <textarea
               id="description"
               value={newPlaylist.description || ''}
@@ -199,17 +202,17 @@ function AddPlaylistButton({
               }
               placeholder="プレイリストの説明を入力してください"
               rows={3}
-              className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[80px] w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={handleCloseDialog}>
+        <DialogFooter className="flex-col gap-2 sm:flex-row">
+          <Button variant="outline" onClick={handleCloseDialog} className="w-full sm:w-auto">
             キャンセル
           </Button>
           <Button
             onClick={handleSavePlaylist}
-            className={buttonVariants({ theme: 'recipes' })}
+            className={`w-full sm:w-auto ${buttonVariants({ theme: 'recipes' })}`}
           >
             {editingPlaylist ? '更新' : '作成'}
           </Button>
@@ -287,41 +290,43 @@ function AddVideoDialog({ isOpen, onClose, onAddVideo }: AddVideoDialogProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="mx-4 w-[calc(100vw-2rem)] max-w-md rounded-lg sm:mx-auto sm:w-full">
         <DialogHeader>
-          <DialogTitle>動画を追加</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-lg">動画を追加</DialogTitle>
+          <DialogDescription className="text-sm">
             YouTube URLを入力して動画をプレイリストに追加してください。
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div>
-            <Label htmlFor="videoUrl">YouTube URL *</Label>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="videoUrl" className="text-sm font-medium">YouTube URL *</Label>
             <Input
               id="videoUrl"
               value={videoUrl}
               onChange={(e) => setVideoUrl(e.target.value)}
               placeholder="https://www.youtube.com/watch?v=..."
+              className="h-11"
             />
           </div>
-          <div>
-            <Label htmlFor="videoTitle">動画タイトル（オプション）</Label>
+          <div className="space-y-2">
+            <Label htmlFor="videoTitle" className="text-sm font-medium">動画タイトル（オプション）</Label>
             <Input
               id="videoTitle"
               value={videoTitle}
               onChange={(e) => setVideoTitle(e.target.value)}
               placeholder="動画のタイトルを入力"
+              className="h-11"
             />
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+        <DialogFooter className="flex-col gap-2 sm:flex-row">
+          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
             キャンセル
           </Button>
           <Button
             onClick={handleAddVideo}
             disabled={isLoading}
-            className={buttonVariants({ theme: 'recipes' })}
+            className={`w-full sm:w-auto ${buttonVariants({ theme: 'recipes' })}`}
           >
             {isLoading ? '追加中...' : '追加'}
           </Button>
@@ -489,137 +494,145 @@ function AddToShoppingListDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[700px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="mx-4 h-[90vh] w-[calc(100vw-2rem)] max-w-2xl overflow-hidden rounded-lg sm:mx-auto sm:h-auto sm:max-h-[90vh] sm:w-full">
+        <DialogHeader className="pb-4">
+          <DialogTitle className="flex items-center gap-2 text-lg">
             <ShoppingCart className="h-5 w-5 text-purple-600" />
             買い物リストに追加
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm">
             レシピから必要な材料を買い物リストに追加します
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-4 py-4">
-          <div className="rounded-lg bg-blue-50 p-3">
-            <h4 className="font-semibold">{extractedRecipe.title}</h4>
-            <div className="mt-1 flex items-center gap-4 text-sm text-gray-600">
-              {extractedRecipe.servings && <span>👥 {extractedRecipe.servings}</span>}
-              {extractedRecipe.cookingTime && <span>⏱️ {extractedRecipe.cookingTime}</span>}
+        <div className="flex-1 overflow-y-auto">
+          <div className="space-y-4">
+            {/* レシピ情報 */}
+            <div className="rounded-lg bg-blue-50 p-3">
+              <h4 className="font-semibold text-sm">{extractedRecipe.title}</h4>
+              <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-600">
+                {extractedRecipe.servings && <span>👥 {extractedRecipe.servings}</span>}
+                {extractedRecipe.cookingTime && <span>⏱️ {extractedRecipe.cookingTime}</span>}
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label className="text-base font-semibold">材料を選択</Label>
-              <Badge variant="secondary">
+            {/* 選択状況 */}
+            <div className="flex items-center justify-between rounded-lg bg-purple-50 p-3">
+              <span className="text-sm font-medium">材料を選択</span>
+              <Badge variant="secondary" className="text-xs">
                 {selectedIngredients.length}/{extractedRecipe.ingredients.length}個選択中
               </Badge>
             </div>
 
-            <ScrollArea className="h-[400px]">
-              <div className="space-y-3 pr-4">
-                {extractedRecipe.ingredients.map((ingredient, index) => {
-                  const ingredientId = `ingredient-${index}`;
-                  const isSelected = selectedIngredients.includes(ingredientId);
-                  const details = ingredientDetails[ingredientId] || {
-                    category: 'その他',
-                    quantity: 1,
-                    unit: '個',
-                    notes: '',
-                  };
+            {/* 材料リスト */}
+            <div className="space-y-3">
+              {extractedRecipe.ingredients.map((ingredient, index) => {
+                const ingredientId = `ingredient-${index}`;
+                const isSelected = selectedIngredients.includes(ingredientId);
+                const details = ingredientDetails[ingredientId] || {
+                  category: 'その他',
+                  quantity: 1,
+                  unit: '個',
+                  notes: '',
+                };
 
-                  return (
-                    <div
-                      key={ingredientId}
-                      className={`rounded-lg border p-4 transition-all ${
-                        isSelected
-                          ? 'border-purple-300 bg-purple-50'
-                          : 'border-gray-200 bg-white hover:border-purple-200'
-                      }`}
-                    >
-                      <div className="space-y-3">
-                        <div className="flex items-start gap-3">
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() => handleIngredientToggle(ingredientId)}
-                            className="mt-1 data-[state=checked]:border-purple-500 data-[state=checked]:bg-purple-500"
-                          />
-                          <div className="flex-1">
-                            <div className="font-medium">{ingredient}</div>
-                            <div className="text-sm text-gray-500">
-                              元の表記: {ingredient}
-                            </div>
+                return (
+                  <div
+                    key={ingredientId}
+                    className={`rounded-lg border p-3 transition-all ${
+                      isSelected
+                        ? 'border-purple-300 bg-purple-50'
+                        : 'border-gray-200 bg-white'
+                    }`}
+                  >
+                    <div className="space-y-3">
+                      {/* 材料選択 */}
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => handleIngredientToggle(ingredientId)}
+                          className="mt-1 data-[state=checked]:border-purple-500 data-[state=checked]:bg-purple-500"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm break-words">{ingredient}</div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            元の表記: {ingredient}
                           </div>
                         </div>
+                      </div>
 
-                        {isSelected && (
-                          <div className="ml-6 grid grid-cols-2 gap-3">
+                      {/* 詳細設定 */}
+                      {isSelected && (
+                        <div className="ml-6 space-y-3 border-t border-purple-200 pt-3">
+                          {/* カテゴリ */}
+                          <div>
+                            <Label className="text-xs font-medium">カテゴリ</Label>
+                            <select
+                              value={details.category}
+                              onChange={(e) => handleDetailChange(ingredientId, 'category', e.target.value)}
+                              className="mt-1 w-full rounded-md border border-gray-300 px-2 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                            >
+                              {categories.map(category => (
+                                <option key={category} value={category}>{category}</option>
+                              ))}
+                            </select>
+                          </div>
+                          
+                          {/* 数量と単位 */}
+                          <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <Label className="text-xs">カテゴリ</Label>
+                              <Label className="text-xs font-medium">数量</Label>
+                              <Input
+                                type="number"
+                                min="0.1"
+                                step="0.1"
+                                value={details.quantity}
+                                onChange={(e) => handleDetailChange(ingredientId, 'quantity', parseFloat(e.target.value) || 1)}
+                                className="mt-1 h-9 text-sm"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs font-medium">単位</Label>
                               <select
-                                value={details.category}
-                                onChange={(e) => handleDetailChange(ingredientId, 'category', e.target.value)}
-                                className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                                value={details.unit}
+                                onChange={(e) => handleDetailChange(ingredientId, 'unit', e.target.value)}
+                                className="mt-1 h-9 w-full rounded-md border border-gray-300 px-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
                               >
-                                {categories.map(category => (
-                                  <option key={category} value={category}>{category}</option>
+                                {units.map(unit => (
+                                  <option key={unit} value={unit}>{unit}</option>
                                 ))}
                               </select>
                             </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <Label className="text-xs">数量</Label>
-                                <Input
-                                  type="number"
-                                  min="0.1"
-                                  step="0.1"
-                                  value={details.quantity}
-                                  onChange={(e) => handleDetailChange(ingredientId, 'quantity', parseFloat(e.target.value) || 1)}
-                                  className="mt-1 h-8 text-sm"
-                                />
-                              </div>
-                              <div>
-                                <Label className="text-xs">単位</Label>
-                                <select
-                                  value={details.unit}
-                                  onChange={(e) => handleDetailChange(ingredientId, 'unit', e.target.value)}
-                                  className="mt-1 h-8 w-full rounded-md border border-gray-300 px-2 text-sm"
-                                >
-                                  {units.map(unit => (
-                                    <option key={unit} value={unit}>{unit}</option>
-                                  ))}
-                                </select>
-                              </div>
-                            </div>
-                            <div className="col-span-2">
-                              <Label className="text-xs">メモ</Label>
-                              <Input
-                                value={details.notes}
-                                onChange={(e) => handleDetailChange(ingredientId, 'notes', e.target.value)}
-                                placeholder="例: 低脂肪、有機栽培"
-                                className="mt-1 h-8 text-sm"
-                              />
-                            </div>
                           </div>
-                        )}
-                      </div>
+                          
+                          {/* メモ */}
+                          <div>
+                            <Label className="text-xs font-medium">メモ</Label>
+                            <Input
+                              value={details.notes}
+                              onChange={(e) => handleDetailChange(ingredientId, 'notes', e.target.value)}
+                              placeholder="例: 低脂肪、有機栽培"
+                              className="mt-1 h-9 text-sm"
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
-            </ScrollArea>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+        <DialogFooter className="flex-col gap-2 border-t pt-4 sm:flex-row">
+          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
             キャンセル
           </Button>
           <Button
             onClick={handleAddToShoppingList}
             disabled={selectedIngredients.length === 0}
-            className={buttonVariants({ theme: 'shopping' })}
+            className={`w-full sm:w-auto ${buttonVariants({ theme: 'shopping' })}`}
           >
             <ShoppingCart className="mr-2 h-4 w-4" />
             買い物リストに追加 ({selectedIngredients.length}個)
@@ -851,8 +864,9 @@ export default function RecipeManagement({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-6 text-sm text-gray-600">
+    <div className="space-y-4 pb-4">
+      {/* ヘッダー統計 */}
+      <div className="flex flex-wrap items-center gap-4 text-xs text-gray-600 sm:gap-6 sm:text-sm">
         <div className="flex items-center gap-1">
           <List className={iconColorVariants({ theme: 'recipes' })} />
           <span>プレイリスト {playlists.length}個</span>
@@ -870,15 +884,16 @@ export default function RecipeManagement({
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-4 sm:flex-row">
-        <h2 className="text-xl font-semibold">レシピ管理</h2>
+      {/* ヘッダー */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-lg font-semibold sm:text-xl">レシピ管理</h2>
         {playlists.length > 0 && (
           <AddPlaylistButton
             onSave={handleSavePlaylist}
             editingPlaylist={editingPlaylist}
             onEditComplete={handleEditComplete}
           >
-            <Button className={buttonVariants({ theme: 'recipes' })}>
+            <Button className={`w-full sm:w-auto ${buttonVariants({ theme: 'recipes' })}`}>
               <Plus className="mr-2 h-4 w-4" />
               プレイリスト作成
             </Button>
@@ -886,17 +901,18 @@ export default function RecipeManagement({
         )}
       </div>
 
-      <div className="space-y-4">
+      {/* プレイリスト一覧 */}
+      <div className="space-y-3">
         {playlists.length === 0 ? (
           <Card>
-            <CardContent className="p-8 text-center">
+            <CardContent className="p-6 text-center sm:p-8">
               {user ? (
                 <>
-                  <Video className="mx-auto mb-4 h-16 w-16 text-blue-300" />
-                  <h3 className="mb-2 text-lg font-semibold">
+                  <Video className="mx-auto mb-3 h-12 w-12 text-blue-300 sm:mb-4 sm:h-16 sm:w-16" />
+                  <h3 className="mb-2 text-base font-semibold sm:text-lg">
                     プレイリストが空です
                   </h3>
-                  <p className="mb-4 text-gray-600">
+                  <p className="mb-4 text-sm text-gray-600 sm:text-base">
                     最初のプレイリストを作成して動画を整理しましょう
                   </p>
                   <AddPlaylistButton
@@ -904,7 +920,7 @@ export default function RecipeManagement({
                     editingPlaylist={editingPlaylist}
                     onEditComplete={handleEditComplete}
                   >
-                    <Button className={buttonVariants({ theme: 'recipes' })}>
+                    <Button className={`w-full sm:w-auto ${buttonVariants({ theme: 'recipes' })}`}>
                       <Plus className="mr-2 h-4 w-4" />
                       プレイリスト作成
                     </Button>
@@ -912,11 +928,11 @@ export default function RecipeManagement({
                 </>
               ) : (
                 <>
-                  <Video className="mx-auto mb-4 h-16 w-16 text-blue-300" />
-                  <h3 className="mb-2 text-lg font-semibold">
+                  <Video className="mx-auto mb-3 h-12 w-12 text-blue-300 sm:mb-4 sm:h-16 sm:w-16" />
+                  <h3 className="mb-2 text-base font-semibold sm:text-lg">
                     プレイリストが空です
                   </h3>
-                  <p className="mb-4 text-gray-600">
+                  <p className="mb-4 text-sm text-gray-600 sm:text-base">
                     ログインしてプレイリストを管理しましょう
                   </p>
                 </>
@@ -924,7 +940,7 @@ export default function RecipeManagement({
             </CardContent>
           </Card>
         ) : (
-          <Accordion type="single" collapsible className="space-y-4">
+          <Accordion type="single" collapsible className="space-y-3">
             {playlists.map((playlist) => (
               <AccordionItem
                 key={playlist.id}
@@ -932,36 +948,34 @@ export default function RecipeManagement({
                 className="border-0"
               >
                 <Card className={cardVariants({ theme: 'recipes' })}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <AccordionTrigger className="p-0 hover:no-underline">
-                          <div className="flex items-center gap-3 text-left">
-                            <div>
-                              <CardTitle className="text-lg">
-                                {playlist.name}
-                              </CardTitle>
-                              <div className="mt-1 flex items-center gap-4 text-sm text-gray-600">
-                                <span>{playlist.videos.length}本の動画</span>
-                                <span>
-                                  作成日:{' '}
-                                  {new Date(
-                                    playlist.created_at
-                                  ).toLocaleDateString('ja-JP')}
-                                </span>
-                              </div>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <AccordionTrigger className="p-0 hover:no-underline [&>svg]:h-4 [&>svg]:w-4">
+                          <div className="flex flex-col items-start gap-2 text-left">
+                            <CardTitle className="text-base sm:text-lg">
+                              {playlist.name}
+                            </CardTitle>
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600 sm:gap-4 sm:text-sm">
+                              <span>{playlist.videos.length}本の動画</span>
+                              <span>
+                                作成日:{' '}
+                                {new Date(
+                                  playlist.created_at
+                                ).toLocaleDateString('ja-JP')}
+                              </span>
                             </div>
                           </div>
                         </AccordionTrigger>
                       </div>
-                      <div className="ml-4 flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                          <DropdownMenuContent align="end" className="w-40">
                             <DropdownMenuItem
                               onClick={() => handleEditPlaylist(playlist)}
                             >
@@ -989,7 +1003,7 @@ export default function RecipeManagement({
                       </div>
                     </div>
                     {playlist.description && (
-                      <p className="mt-2 text-sm text-gray-600">
+                      <p className="mt-2 text-xs text-gray-600 sm:text-sm">
                         {playlist.description}
                       </p>
                     )}
@@ -997,9 +1011,9 @@ export default function RecipeManagement({
                   <AccordionContent>
                     <CardContent className="pt-0">
                       {playlist.videos.length === 0 ? (
-                        <div className="py-8 text-center text-gray-500">
-                          <Video className="mx-auto mb-3 h-12 w-12 text-gray-300" />
-                          <p className="mb-4">動画がありません</p>
+                        <div className="py-6 text-center text-gray-500 sm:py-8">
+                          <Video className="mx-auto mb-3 h-8 w-8 text-gray-300 sm:h-12 sm:w-12" />
+                          <p className="mb-4 text-sm">動画がありません</p>
                           <Button
                             onClick={() => {
                               setActivePlaylistId(playlist.id);
@@ -1007,6 +1021,7 @@ export default function RecipeManagement({
                             }}
                             variant="outline"
                             size="sm"
+                            className="w-full sm:w-auto"
                           >
                             <Plus className="mr-2 h-4 w-4" />
                             動画を追加
@@ -1017,16 +1032,19 @@ export default function RecipeManagement({
                           {playlist.videos.map((video, index) => (
                             <div
                               key={video.id}
-                              className="flex items-center gap-3 rounded-lg bg-gray-50 p-3 transition-colors hover:bg-gray-100"
+                              className="flex items-start gap-3 rounded-lg bg-gray-50 p-3 transition-colors hover:bg-gray-100"
                             >
-                              <div className="w-8 text-center font-mono text-sm text-gray-500">
+                              {/* 番号 */}
+                              <div className="flex h-6 w-6 items-center justify-center rounded bg-blue-100 text-xs font-mono text-blue-600 sm:h-8 sm:w-8 sm:text-sm">
                                 {index + 1}
                               </div>
+                              
+                              {/* サムネイル */}
                               <a
                                 href={video.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="relative block h-14 w-24 flex-shrink-0"
+                                className="relative block h-12 w-20 flex-shrink-0 sm:h-14 sm:w-24"
                               >
                                 <Image
                                   src={video.thumbnail}
@@ -1040,13 +1058,17 @@ export default function RecipeManagement({
                                   }}
                                 />
                               </a>
+                              
+                              {/* 動画情報 */}
                               <div className="min-w-0 flex-1">
-                                <h4 className="truncate text-sm font-medium">
+                                <h4 className="line-clamp-2 text-xs font-medium sm:text-sm">
                                   {video.title}
                                 </h4>
-                                <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
-                                  <Clock className="h-3 w-3" />
-                                  <span>{video.duration}</span>
+                                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                                  <div className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    <span>{video.duration}</span>
+                                  </div>
                                   <span>•</span>
                                   <span>
                                     追加日:{' '}
@@ -1056,19 +1078,24 @@ export default function RecipeManagement({
                                   </span>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-1">
+                              
+                              {/* アクションボタン */}
+                              <div className="flex flex-col gap-1 sm:flex-row">
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   onClick={() => handleExtractRecipe(video)}
                                   disabled={extractingRecipe}
-                                  className="text-green-600 hover:bg-green-50"
+                                  className="h-8 w-8 p-0 text-green-600 hover:bg-green-50 sm:h-auto sm:w-auto sm:px-2"
                                 >
                                   {extractingRecipe ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <Loader2 className="h-3 w-3 animate-spin sm:h-4 sm:w-4" />
                                   ) : (
-                                    <Download className="h-4 w-4" />
+                                    <Download className="h-3 w-3 sm:h-4 sm:w-4" />
                                   )}
+                                  <span className="sr-only sm:not-sr-only sm:ml-1">
+                                    レシピ取得
+                                  </span>
                                 </Button>
                                 <Button
                                   size="sm"
@@ -1076,9 +1103,10 @@ export default function RecipeManagement({
                                   onClick={() =>
                                     handleDeleteVideo(playlist.id, video.id)
                                   }
-                                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                                  className="h-8 w-8 p-0 text-red-600 hover:bg-red-50 hover:text-red-700 sm:h-auto sm:w-auto sm:px-2"
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                  <span className="sr-only">削除</span>
                                 </Button>
                               </div>
                             </div>
@@ -1094,6 +1122,7 @@ export default function RecipeManagement({
         )}
       </div>
 
+      {/* 隠しボタン */}
       <AddPlaylistButton
         onSave={handleSavePlaylist}
         editingPlaylist={editingPlaylist}
@@ -1102,6 +1131,7 @@ export default function RecipeManagement({
         <div style={{ display: 'none' }} />
       </AddPlaylistButton>
 
+      {/* ダイアログ */}
       <AddVideoDialog
         isOpen={isAddVideoDialogOpen}
         onClose={() => setIsAddVideoDialogOpen(false)}
@@ -1110,90 +1140,92 @@ export default function RecipeManagement({
 
       {/* レシピ表示ダイアログ */}
       <Dialog open={showRecipeDialog} onOpenChange={setShowRecipeDialog}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[700px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+        <DialogContent className="mx-4 h-[90vh] w-[calc(100vw-2rem)] max-w-2xl overflow-hidden rounded-lg sm:mx-auto sm:h-auto sm:max-h-[90vh] sm:w-full">
+          <DialogHeader className="pb-4">
+            <DialogTitle className="flex items-center gap-2 text-lg">
               <Download className="h-5 w-5 text-orange-600" />
               抽出されたレシピ
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-sm">
               動画から抽出された材料と手順です
             </DialogDescription>
           </DialogHeader>
           {extractedRecipe && (
-            <div className="space-y-6 py-4">
-              {/* 基本情報 */}
-              <div className="grid grid-cols-2 gap-4">
-                {extractedRecipe.servings && (
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-gray-600" />
-                    <span className="text-sm">{extractedRecipe.servings}</span>
-                  </div>
-                )}
-                {extractedRecipe.cookingTime && (
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-gray-600" />
-                    <span className="text-sm">{extractedRecipe.cookingTime}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* 抽出方法の表示 */}
-              <div className="rounded-lg bg-blue-50 p-3">
-                <div className="flex items-center gap-2 text-sm text-blue-700">
-                  <AlertCircle className="h-4 w-4" />
-                  抽出方法: {
-                    extractedRecipe.extractionMethod === 'gemini_video_analysis' ? 'AI動画分析' :
-                    extractedRecipe.extractionMethod === 'gemini_text_analysis' ? 'AIテキスト分析' :
-                    '説明文から抽出'
-                  }
+            <div className="flex-1 overflow-y-auto">
+              <div className="space-y-4">
+                {/* 基本情報 */}
+                <div className="grid grid-cols-2 gap-3">
+                  {extractedRecipe.servings && (
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-gray-600" />
+                      <span className="text-sm">{extractedRecipe.servings}</span>
+                    </div>
+                  )}
+                  {extractedRecipe.cookingTime && (
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-gray-600" />
+                      <span className="text-sm">{extractedRecipe.cookingTime}</span>
+                    </div>
+                  )}
                 </div>
-              </div>
 
-              {/* 材料 */}
-              <div className="space-y-3">
-                <h4 className="flex items-center gap-2 font-semibold">
-                  <Package className="h-4 w-4 text-green-600" />
-                  材料 ({extractedRecipe.ingredients.length}個)
-                </h4>
-                {extractedRecipe.ingredients.length > 0 ? (
-                  <div className="grid gap-2">
-                    {extractedRecipe.ingredients.map((ingredient, index) => (
-                      <div key={index} className="flex items-center gap-2 rounded-lg border bg-green-50 p-3">
-                        <span className="text-sm">{ingredient}</span>
-                      </div>
-                    ))}
+                {/* 抽出方法の表示 */}
+                <div className="rounded-lg bg-blue-50 p-3">
+                  <div className="flex items-center gap-2 text-sm text-blue-700">
+                    <AlertCircle className="h-4 w-4" />
+                    抽出方法: {
+                      extractedRecipe.extractionMethod === 'gemini_video_analysis' ? 'AI動画分析' :
+                      extractedRecipe.extractionMethod === 'gemini_text_analysis' ? 'AIテキスト分析' :
+                      '説明文から抽出'
+                    }
                   </div>
-                ) : (
-                  <p className="text-gray-500 text-sm">材料が見つかりませんでした</p>
-                )}
-              </div>
+                </div>
 
-              {/* 手順 */}
-              <div className="space-y-3">
-                <h4 className="flex items-center gap-2 font-semibold">
-                  <List className="h-4 w-4 text-blue-600" />
-                  手順 ({extractedRecipe.steps.length}ステップ)
-                </h4>
-                {extractedRecipe.steps.length > 0 ? (
-                  <div className="space-y-3">
-                    {extractedRecipe.steps.map((step, index) => (
-                      <div key={index} className="flex gap-3 rounded-lg border bg-blue-50 p-3">
-                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
-                          {index + 1}
+                {/* 材料 */}
+                <div className="space-y-3">
+                  <h4 className="flex items-center gap-2 font-semibold">
+                    <Package className="h-4 w-4 text-green-600" />
+                    材料 ({extractedRecipe.ingredients.length}個)
+                  </h4>
+                  {extractedRecipe.ingredients.length > 0 ? (
+                    <div className="space-y-2">
+                      {extractedRecipe.ingredients.map((ingredient, index) => (
+                        <div key={index} className="flex items-center gap-2 rounded-lg border bg-green-50 p-3">
+                          <span className="text-sm break-words">{ingredient}</span>
                         </div>
-                        <span className="text-sm">{step}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-sm">手順が見つかりませんでした</p>
-                )}
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-sm">材料が見つかりませんでした</p>
+                  )}
+                </div>
+
+                {/* 手順 */}
+                <div className="space-y-3">
+                  <h4 className="flex items-center gap-2 font-semibold">
+                    <List className="h-4 w-4 text-blue-600" />
+                    手順 ({extractedRecipe.steps.length}ステップ)
+                  </h4>
+                  {extractedRecipe.steps.length > 0 ? (
+                    <div className="space-y-3">
+                      {extractedRecipe.steps.map((step, index) => (
+                        <div key={index} className="flex gap-3 rounded-lg border bg-blue-50 p-3">
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
+                            {index + 1}
+                          </div>
+                          <span className="text-sm break-words">{step}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-sm">手順が見つかりませんでした</p>
+                  )}
+                </div>
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRecipeDialog(false)}>
+          <DialogFooter className="flex-col gap-2 border-t pt-4 sm:flex-row">
+            <Button variant="outline" onClick={() => setShowRecipeDialog(false)} className="w-full sm:w-auto">
               閉じる
             </Button>
             {extractedRecipe && extractedRecipe.ingredients.length > 0 && (
@@ -1202,7 +1234,7 @@ export default function RecipeManagement({
                   setShowRecipeDialog(false);
                   setShowShoppingDialog(true);
                 }}
-                className={buttonVariants({ theme: 'shopping' })}
+                className={`w-full sm:w-auto ${buttonVariants({ theme: 'shopping' })}`}
               >
                 <ShoppingCart className="mr-2 h-4 w-4" />
                 買い物リストに追加
