@@ -582,10 +582,6 @@ export default function CookingManagement({
           <Timer className="h-4 w-4 text-gray-500" />
           <span>調理履歴 {cookingSessions.length}品</span>
         </div>
-        <div className="flex items-center gap-1">
-          <BookOpen className={iconColorVariants({ theme: 'recipes' })} />
-          <span>プレイリスト {playlists.length}個</span>
-        </div>
       </div>
 
       <div className="flex items-center justify-between mb-6">

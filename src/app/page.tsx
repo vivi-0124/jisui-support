@@ -317,7 +317,7 @@ export default function JisuiSupport() {
                 onClick={() => setAuthModalOpen(true)}
               >
                 <User className="h-4 w-4" />
-                ログイン/アカウント作成
+                ログイン
               </Button>
             )}
           </div>
