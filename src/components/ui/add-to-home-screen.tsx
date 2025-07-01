@@ -32,12 +32,16 @@ export function AddToHomeScreen({ open, onOpenChange }: AddToHomeScreenProps) {
           </div>
           <div className="flex flex-col gap-3 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
-              <p>1. ブラウザの共有ボタン<Share className="h-5 w-5 shrink-0" />をタップ</p>
+              <p className="inline-flex items-center gap-1 whitespace-nowrap">
+                1. ブラウザの共有ボタン
+                <Share className="h-5 w-5 shrink-0" />
+                をタップ
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <p>2. 「ホーム画面に追加」を選択</p>
             </div>
-            <div className="flex items-center gap-2 pl-7">
+            <div className="flex items-center gap-2">
               <p>3. 「追加」をタップして完了</p>
             </div>
           </div>
