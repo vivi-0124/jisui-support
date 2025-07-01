@@ -56,6 +56,7 @@ import {
   ChefHat,
   Download,
   Loader2,
+  HelpCircle,
 } from 'lucide-react';
 import IngredientsManagement, {
   Ingredient,
@@ -79,6 +80,7 @@ import {
   Video as RecipeVideo,
 } from '@/components/recipe-management';
 import { ShoppingItem } from '@/components/shopping-list';
+import { AddToHomeScreen } from '@/components/ui/add-to-home-screen';
 
 // Mock types - これらは実際のsupabaseタイプに置き換える必要があります
 interface YouTubeVideo {
@@ -116,6 +118,7 @@ export default function JisuiSupport() {
   const [searchResults, setSearchResults] = useState<YouTubeVideo[]>([]);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [addPromptOpen, setAddPromptOpen] = useState(false);
 
   const { user, loading, supabase } = useAuth();
   const [playlists, setPlaylists] = useState<RecipePlaylist[]>([]);
@@ -243,6 +246,20 @@ export default function JisuiSupport() {
     }
   }, [user, loading, supabase, mounted]);
 
+  // ホーム画面追加ダイアログの自動表示
+  useEffect(() => {
+    if (!user) return;
+
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+    if (!isStandalone) {
+      const hasShownPrompt = localStorage.getItem('hasShownAddToHomeScreen');
+      if (!hasShownPrompt) {
+        setAddPromptOpen(true);
+        localStorage.setItem('hasShownAddToHomeScreen', 'true');
+      }
+    }
+  }, [user]);
+
   // マウント前は何も表示しない
   if (!mounted) {
     return null;
@@ -264,7 +281,7 @@ export default function JisuiSupport() {
       {/* Header */}
       <header className={headerVariants({ theme: 'home' })}>
         <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Home className="h-6 w-6" />
             <h1 className="text-xl font-bold">自炊サポート</h1>
           </div>
@@ -325,7 +342,19 @@ export default function JisuiSupport() {
       </header>
 
       {/* Main Content */}
-      <main className="mx-auto max-w-6xl p-4">
+      <main className="relative mx-auto max-w-6xl p-4">
+        {/* ホーム画面追加ヒントボタン（メイン左上） */}
+        <div className="absolute -top-0 -left-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="p-2"
+            onClick={() => setAddPromptOpen(true)}
+            aria-label="ホーム画面に追加する方法を表示"
+          >
+            <HelpCircle className="h-6 w-6" />
+          </Button>
+        </div>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           {/* Home Tab Content */}
           <TabsContent value="home" className="space-y-8">
@@ -489,6 +518,9 @@ export default function JisuiSupport() {
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
       />
+
+      {/* ホーム画面追加ダイアログ */}
+      <AddToHomeScreen open={addPromptOpen} onOpenChange={setAddPromptOpen} />
     </div>
   );
 }

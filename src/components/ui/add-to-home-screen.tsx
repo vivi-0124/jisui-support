@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './dialog';
 import { Button } from './button';
-import { Share, Plus } from 'lucide-react';
+import { Share } from 'lucide-react';
 
 interface AddToHomeScreenProps {
   open: boolean;
@@ -32,11 +32,9 @@ export function AddToHomeScreen({ open, onOpenChange }: AddToHomeScreenProps) {
           </div>
           <div className="flex flex-col gap-3 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
-              <Share className="h-5 w-5 shrink-0" />
-              <p>1. ブラウザの共有ボタン<span className="text-foreground">（↑のようなアイコン）</span>をタップ</p>
+              <p>1. ブラウザの共有ボタン<Share className="h-5 w-5 shrink-0" />をタップ</p>
             </div>
             <div className="flex items-center gap-2">
-              <Plus className="h-5 w-5 shrink-0" />
               <p>2. 「ホーム画面に追加」を選択</p>
             </div>
             <div className="flex items-center gap-2 pl-7">
