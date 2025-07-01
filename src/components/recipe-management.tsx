@@ -1091,10 +1091,10 @@ export default function RecipeManagement({
                 <>
                   <Video className="mx-auto mb-4 h-16 w-16 text-blue-300" />
                   <h3 className="mb-2 text-lg font-semibold">
-                    プレイリストが空です
+                  プレイリストがありません
                   </h3>
                   <p className="mb-4 text-gray-600">
-                    最初のプレイリストを作成して動画を整理しましょう
+                    最初のプレイリストを作成してレシピを整理しましょう
                   </p>
                   <AddPlaylistButton
                     onSave={handleSavePlaylist}
@@ -1113,10 +1113,10 @@ export default function RecipeManagement({
                 <>
                   <Video className="mx-auto mb-4 h-16 w-16 text-blue-300" />
                   <h3 className="mb-2 text-lg font-semibold">
-                    プレイリストが空です
+                    プレイリストがありません
                   </h3>
                   <p className="mb-4 text-gray-600">
-                    ログインしてプレイリストを管理しましょう
+                    ログインしてレシピを管理しましょう
                   </p>
                 </>
               )}
