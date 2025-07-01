@@ -355,7 +355,7 @@ export default function JisuiSupport() {
                 size="lg"
                 onClick={() => setActiveTab('cooking')}
                 className={gradientButtonVariants({
-                  theme: 'search',
+                  theme: 'cooking',
                   size: 'lg',
                 })}
               >
