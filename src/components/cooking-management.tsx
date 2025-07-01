@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ChefHat,
   Play,
@@ -21,15 +20,22 @@ import {
   Star,
   Timer,
   BookOpen,
+  Plus,
 } from 'lucide-react';
-import { buttonVariants } from '@/lib/theme-variants';
+import { buttonVariants, iconColorVariants } from '@/lib/theme-variants';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, type User } from '@/contexts/AuthContext';
 import { Ingredient } from '@/components/ingredients-management';
 import {
   Playlist as RecipePlaylist,
   Video as RecipeVideo,
 } from '@/components/recipe-management';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface CookingManagementProps {
   ingredients: Ingredient[];
@@ -95,11 +101,12 @@ export default function CookingManagement({
   const [cookingSessions, setCookingSessions] = useState<CookingSession[]>([]);
   const [cookableRecipes, setCookableRecipes] = useState<CookableRecipe[]>([]);
   const [playlists, setPlaylists] = useState<RecipePlaylist[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
+  const [analyzingVideoId, setAnalyzingVideoId] = useState<string | null>(null);
   const [currentSession, setCurrentSession] = useState<CookingSession | null>(
     null
   );
-  const [activeTab, setActiveTab] = useState('recipes');
+  const [recipeDialogOpen, setRecipeDialogOpen] = useState(false);
 
   const { user } = useAuth();
 
@@ -154,7 +161,37 @@ export default function CookingManagement({
         }
         console.error('調理セッション読み込みエラー:', error);
       } else {
-        setCookingSessions(data || []);
+        type DBRow = {
+          id: string;
+          dish_name: string;
+          servings: number;
+          used_ingredients: UsedIngredient[] | null;
+          cooking_time: number;
+          notes: string | null;
+          recipe_video_url: string | null;
+          video_id: string | null;
+          status: 'preparing' | 'cooking' | 'completed' | null;
+          created_at: string;
+          completed_at: string | null;
+        };
+
+        const normalizedSessions: CookingSession[] = (data || []).map(
+          (row: DBRow) => ({
+            id: row.id,
+            dishName: row.dish_name,
+            servings: row.servings,
+            usedIngredients: row.used_ingredients ?? [],
+            cookingTime: row.cooking_time,
+            notes: row.notes ?? '',
+            recipeVideoUrl: row.recipe_video_url ?? undefined,
+            videoId: row.video_id ?? undefined,
+            status: (row.status ?? 'completed') as 'preparing' | 'cooking' | 'completed',
+            createdAt: row.created_at,
+            completedAt: row.completed_at ?? undefined,
+          })
+        );
+
+        setCookingSessions(normalizedSessions);
       }
     } catch (error) {
       console.error('調理セッション読み込みエラー:', error);
@@ -267,29 +304,28 @@ export default function CookingManagement({
               existingRecipe.ingredients || [],
               ingredients
             );
-            const matchPercentage =
-              calculateMatchPercentage(matchedIngredients);
+            const matchPercentage = calculateMatchPercentage(
+              matchedIngredients
+            );
 
-            if (matchPercentage > 0) {
-              cookable.push({
-                video,
-                extractedRecipe: {
-                  title: existingRecipe.title,
-                  ingredients: existingRecipe.ingredients || [],
-                  steps: existingRecipe.steps || [],
-                  servings: existingRecipe.servings,
-                  cookingTime: existingRecipe.cooking_time,
-                  description: existingRecipe.description || '',
-                  extractionMethod: existingRecipe.extraction_method as
-                    | 'gemini_video_analysis'
-                    | 'gemini_text_analysis'
-                    | 'description',
-                  videoId,
-                },
-                matchedIngredients,
-                matchPercentage,
-              });
-            }
+            cookable.push({
+              video,
+              extractedRecipe: {
+                title: existingRecipe.title,
+                ingredients: existingRecipe.ingredients || [],
+                steps: existingRecipe.steps || [],
+                servings: existingRecipe.servings,
+                cookingTime: existingRecipe.cooking_time,
+                description: existingRecipe.description || '',
+                extractionMethod: existingRecipe.extraction_method as
+                  | 'gemini_video_analysis'
+                  | 'gemini_text_analysis'
+                  | 'description',
+                videoId,
+              },
+              matchedIngredients,
+              matchPercentage,
+            });
           } else {
             cookable.push({
               video,
@@ -318,17 +354,13 @@ export default function CookingManagement({
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      await Promise.all([
-        loadPlaylists(),
-        loadCookingSessions(),
-        loadCookableRecipes(),
-      ]);
+      await Promise.all([loadPlaylists(), loadCookingSessions()]);
     } catch (error) {
       console.error('データの読み込みエラー:', error);
     } finally {
       setLoading(false);
     }
-  }, [loadPlaylists, loadCookingSessions, loadCookableRecipes]);
+  }, [loadPlaylists, loadCookingSessions]);
 
   // データを読み込み
   useEffect(() => {
@@ -336,6 +368,14 @@ export default function CookingManagement({
       loadData();
     }
   }, [user, loadData]);
+
+  // プレイリストまたは材料が更新されたら調理可能レシピを再計算
+  useEffect(() => {
+    if (user && playlists.length > 0) {
+      loadCookableRecipes();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, playlists, ingredients]);
 
   const analyzeRecipe = async (
     video: RecipeVideo
@@ -392,9 +432,9 @@ export default function CookingManagement({
   const startCooking = async (recipe: CookableRecipe) => {
     if (!recipe.extractedRecipe) {
       // レシピ分析が必要
-      setLoading(true);
+      setAnalyzingVideoId(recipe.video.id);
       const extractedRecipe = await analyzeRecipe(recipe.video);
-      setLoading(false);
+      setAnalyzingVideoId(null);
 
       if (!extractedRecipe) {
         alert('レシピの分析に失敗しました');
@@ -436,7 +476,6 @@ export default function CookingManagement({
     };
 
     setCurrentSession(session);
-    setActiveTab('cooking');
   };
 
   const completeCooking = async (session: CookingSession, notes: string) => {
@@ -505,12 +544,11 @@ export default function CookingManagement({
 
     setCookingSessions((prev) => [completedSession, ...prev]);
     setCurrentSession(null);
-    setActiveTab('history');
 
     alert(`${completedSession.dishName}の調理が完了しました！`);
   };
 
-  if (loading && cookableRecipes.length === 0) {
+  if (_loading && cookableRecipes.length === 0) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
         <div className="space-y-4 text-center">
@@ -526,56 +564,93 @@ export default function CookingManagement({
       <CookingInterface
         session={currentSession}
         onComplete={completeCooking}
-        onCancel={() => setCurrentSession(null)}
+        onCancel={() => {
+          setCurrentSession(null);
+        }}
       />
     );
   }
 
   return (
     <div className="max-w-full min-w-0 space-y-6 overflow-hidden">
-      <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-2xl font-bold">
-          <ChefHat className="h-6 w-6 text-orange-600" />
-          料理する
-        </h2>
+      <div className="flex items-center gap-6 text-sm text-gray-600">
+        <div className="flex items-center gap-1">
+          <ChefHat className={iconColorVariants({ theme: 'search' })} />
+          <span>調理可能 {cookableRecipes.length}品</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <Timer className="h-4 w-4 text-gray-500" />
+          <span>調理履歴 {cookingSessions.length}品</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <BookOpen className={iconColorVariants({ theme: 'recipes' })} />
+          <span>プレイリスト {playlists.length}個</span>
+        </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="recipes">調理可能レシピ</TabsTrigger>
-          <TabsTrigger value="ingredients">材料確認</TabsTrigger>
-          <TabsTrigger value="history">調理履歴</TabsTrigger>
-        </TabsList>
+      <div className="flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-xl font-semibold">
+          料理する
+        </h2>
+        {user && (
+          <Button
+            onClick={() => setRecipeDialogOpen(true)}
+            className={`${buttonVariants({ theme: 'search' })}`}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            料理開始
+          </Button>
+        )}
+      </div>
 
-        <TabsContent value="recipes" className="space-y-4">
-          {cookableRecipes.length === 0 && !loading && (
-            <Card className="border-yellow-200 bg-yellow-50">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 text-yellow-800">
-                  <AlertTriangle className="h-4 w-4" />
-                  <span className="text-sm">
-                    新しい料理管理機能を使用するには、データベースのセットアップが必要です。
-                    開発者にお問い合わせください。
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          <RecipeList
-            recipes={cookableRecipes}
-            onStartCooking={startCooking}
-            loading={loading}
-          />
-        </TabsContent>
+      {/* 料理開始ボタン下の空状態 */}
+      {cookableRecipes.length === 0 && !user && (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <ChefHat className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+            <h3 className="mb-2 text-lg font-semibold">調理可能なレシピがありません</h3>
+            <p className="text-gray-600">ログインしてレシピを登録しましょう</p>
+          </CardContent>
+        </Card>
+      )}
 
-        <TabsContent value="ingredients" className="space-y-4">
-          <IngredientStatus ingredients={ingredients} />
-        </TabsContent>
+      {/* 調理履歴（ログインユーザーのみ） */}
+      {user && (
+        <CookingHistory sessions={cookingSessions} user={user} />
+      )}
 
-        <TabsContent value="history" className="space-y-4">
-          <CookingHistory sessions={cookingSessions} />
-        </TabsContent>
-      </Tabs>
+      {/* レシピ選択ダイアログ */}
+      <Dialog open={recipeDialogOpen} onOpenChange={setRecipeDialogOpen}>
+        <DialogContent className="mx-4 flex h-[90vh] w-[calc(100vw-2rem)] max-w-2xl flex-col overflow-hidden rounded-lg sm:mx-auto sm:h-auto sm:max-h-[90vh] sm:w-full">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle className="text-lg">レシピを選択</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto p-4">
+            {!user ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <ChefHat className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+                  <h3 className="mb-2 text-lg font-semibold">
+                    ログインが必要です
+                  </h3>
+                  <p className="text-gray-600">
+                    調理機能を利用するには、ログインしてレシピを準備してください。
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <RecipeList
+                recipes={cookableRecipes}
+                onStartCooking={(recipe) => {
+                  startCooking(recipe);
+                  setRecipeDialogOpen(false);
+                }}
+                analyzingVideoId={analyzingVideoId}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -584,11 +659,11 @@ export default function CookingManagement({
 function RecipeList({
   recipes,
   onStartCooking,
-  loading,
+  analyzingVideoId,
 }: {
   recipes: CookableRecipe[];
   onStartCooking: (recipe: CookableRecipe) => void;
-  loading: boolean;
+  analyzingVideoId: string | null;
 }) {
   if (recipes.length === 0) {
     return (
@@ -631,10 +706,12 @@ function RecipeList({
                     {recipe.video.title}
                   </h4>
                   <div className="flex flex-wrap gap-2">
-                    {recipe.matchPercentage > 0 ? (
+                    {recipe.extractedRecipe ? (
                       <Badge
                         variant={
-                          recipe.matchPercentage >= 80 ? 'default' : 'secondary'
+                          recipe.matchPercentage >= 80
+                            ? 'default'
+                            : 'secondary'
                         }
                         className="text-xs"
                       >
@@ -707,10 +784,10 @@ function RecipeList({
               <div className="flex gap-2">
                 <Button
                   onClick={() => onStartCooking(recipe)}
-                  disabled={loading}
+                  disabled={analyzingVideoId === recipe.video.id}
                   className={`flex-1 ${buttonVariants({ theme: 'search' })}`}
                 >
-                  {loading ? (
+                  {analyzingVideoId === recipe.video.id ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     <Play className="mr-2 h-4 w-4" />
@@ -735,100 +812,25 @@ function RecipeList({
   );
 }
 
-// 材料状況コンポーネント
-function IngredientStatus({ ingredients }: { ingredients: Ingredient[] }) {
-  const availableIngredients = ingredients.filter((ing) => ing.quantity > 0);
-  const lowStockIngredients = ingredients.filter(
-    (ing) => ing.quantity > 0 && ing.quantity <= 2
-  );
-
-  return (
-    <div className="space-y-6">
-      {/* 統計 */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-green-600">
-              {availableIngredients.length}
-            </div>
-            <div className="text-sm text-gray-600">利用可能</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-yellow-600">
-              {lowStockIngredients.length}
-            </div>
-            <div className="text-sm text-gray-600">在庫少</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 材料リスト */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold">利用可能な材料</h3>
-        {availableIngredients.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <Package className="mx-auto mb-4 h-12 w-12 text-gray-300" />
-              <p className="text-gray-600">利用可能な材料がありません</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-3">
-            {availableIngredients.map((ingredient) => (
-              <Card key={ingredient.id} className="overflow-hidden">
-                <CardContent className="p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0 flex-1">
-                      <h4 className="truncate font-medium">
-                        {ingredient.name}
-                      </h4>
-                      <div className="mt-1 flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">
-                          {ingredient.category}
-                        </Badge>
-                        {ingredient.quantity <= 2 && (
-                          <Badge
-                            variant="outline"
-                            className="text-xs text-yellow-600"
-                          >
-                            在庫少
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold">
-                        {ingredient.quantity}
-                        {ingredient.unit}
-                      </div>
-                      {ingredient.expiry_date && (
-                        <div className="text-xs text-gray-500">
-                          期限: {ingredient.expiry_date}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // 調理履歴コンポーネント
-function CookingHistory({ sessions }: { sessions: CookingSession[] }) {
+function CookingHistory({
+  sessions,
+  user,
+}: {
+  sessions: CookingSession[];
+  user: User | null;
+}) {
   if (sessions.length === 0) {
     return (
       <Card>
         <CardContent className="p-8 text-center">
-          <Timer className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+          <Timer className="mx-auto mb-4 h-16 w-16 text-purple-300" />
           <h3 className="mb-2 text-lg font-semibold">調理履歴がありません</h3>
-          <p className="text-gray-600">料理を作って履歴を蓄積しましょう</p>
+          <p className="mb-4 text-gray-600">
+            {user
+              ? '料理を作って履歴を蓄積しましょう'
+              : 'ログインして調理履歴を確認しましょう'}
+          </p>
         </CardContent>
       </Card>
     );

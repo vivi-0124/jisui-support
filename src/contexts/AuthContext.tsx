@@ -11,12 +11,14 @@ import {
 import { SupabaseClient, User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 
-type AuthContextType = {
+export type { User };
+
+interface AuthContextType {
   supabase: SupabaseClient;
   user: User | null;
   session: Session | null;
   loading: boolean;
-};
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 

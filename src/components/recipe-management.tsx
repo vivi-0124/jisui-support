@@ -42,6 +42,8 @@ import {
   Package,
   AlertCircle,
   Users,
+  Eye,
+  Check,
 } from 'lucide-react';
 import {
   buttonVariants,
@@ -111,7 +113,8 @@ interface ExtractedRecipe {
   extractionMethod:
     | 'gemini_video_analysis'
     | 'gemini_text_analysis'
-    | 'description';
+    | 'description'
+    | 'database';
 }
 
 interface AddPlaylistButtonProps {
@@ -669,7 +672,7 @@ function AddToShoppingListDialog({
                           </div>
 
                           {/* 数量と単位 */}
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                             <div>
                               <Label className="text-xs font-medium">
                                 数量
@@ -773,7 +776,48 @@ export default function RecipeManagement({
   const [showShoppingDialog, setShowShoppingDialog] = useState(false);
   const [extractedRecipe, setExtractedRecipe] =
     useState<ExtractedRecipe | null>(null);
-  const [extractingRecipe, setExtractingRecipe] = useState(false);
+  const [loadingVideoId, setLoadingVideoId] = useState<string | null>(null);
+  const [extractedVideoIds, setExtractedVideoIds] = useState<Set<string>>(new Set());
+
+  const getExtractionMethodText = (
+    method: ExtractedRecipe['extractionMethod'] | undefined
+  ) => {
+    switch (method) {
+      case 'gemini_video_analysis':
+        return 'AI動画分析';
+      case 'gemini_text_analysis':
+        return 'AIテキスト分析';
+      case 'database':
+        return 'データベースから取得';
+      case 'description':
+        return '説明文から抽出';
+      default:
+        return '不明';
+    }
+  };
+
+  useEffect(() => {
+    const fetchExtractedRecipes = async () => {
+      if (!user) return;
+
+      // プレイリストがまだロードされていない場合はスキップ
+      const allVideoIds = playlists.flatMap((p) => p.videos.map((v) => v.id));
+      if (allVideoIds.length === 0) return;
+
+      const { data, error } = await supabase
+        .from('extracted_recipes')
+        .select('video_id')
+        .eq('user_id', user.id)
+        .in('video_id', allVideoIds.map((id) => id));
+
+      if (!error && data) {
+        setExtractedVideoIds(new Set(data.map((d: { video_id: string }) => d.video_id)));
+      }
+    };
+
+    fetchExtractedRecipes();
+    
+  }, [user, playlists]);
 
   const handleSavePlaylist = async (
     playlistData: Omit<Playlist, 'id' | 'user_id' | 'created_at' | 'updated_at'>
@@ -901,7 +945,8 @@ export default function RecipeManagement({
   };
 
   const handleExtractRecipe = async (video: Video) => {
-    setExtractingRecipe(true);
+    // 対象動画のロード状態を設定
+    setLoadingVideoId(video.id);
     try {
       // YouTube URLから動画IDを抽出
       const videoId = extractVideoId(video.url);
@@ -917,6 +962,9 @@ export default function RecipeManagement({
       if (response.ok) {
         setExtractedRecipe(data.recipe);
         setShowRecipeDialog(true);
+
+        // 抽出済みリストに追加
+        setExtractedVideoIds((prev) => new Set(prev).add(video.id));
       } else {
         alert(data.error || 'レシピの抽出に失敗しました');
       }
@@ -924,7 +972,8 @@ export default function RecipeManagement({
       console.error('Recipe extraction error:', error);
       alert('レシピの抽出中にエラーが発生しました');
     } finally {
-      setExtractingRecipe(false);
+      // ロード状態をリセット
+      setLoadingVideoId(null);
     }
   };
 
@@ -1223,16 +1272,19 @@ export default function RecipeManagement({
                                   size="sm"
                                   variant="outline"
                                   onClick={() => handleExtractRecipe(video)}
-                                  disabled={extractingRecipe}
+                                  // 他の動画が抽出中の場合はボタンを無効化
+                                  disabled={loadingVideoId !== null}
                                   className="h-8 w-8 p-0 text-green-600 hover:bg-green-50 sm:h-auto sm:w-auto sm:px-2"
                                 >
-                                  {extractingRecipe ? (
+                                  {loadingVideoId === video.id ? (
                                     <Loader2 className="h-3 w-3 animate-spin sm:h-4 sm:w-4" />
+                                  ) : extractedVideoIds.has(video.id) ? (
+                                    <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                                   ) : (
                                     <Download className="h-3 w-3 sm:h-4 sm:w-4" />
                                   )}
                                   <span className="sr-only sm:not-sr-only sm:ml-1">
-                                    レシピ取得
+                                    {extractedVideoIds.has(video.id) ? 'レシピ表示' : 'レシピ取得'}
                                   </span>
                                 </Button>
                                 <Button
@@ -1278,8 +1330,8 @@ export default function RecipeManagement({
 
       {/* レシピ表示ダイアログ */}
       <Dialog open={showRecipeDialog} onOpenChange={setShowRecipeDialog}>
-        <DialogContent className="mx-4 h-[90vh] w-[calc(100vw-2rem)] max-w-2xl overflow-hidden rounded-lg sm:mx-auto sm:h-auto sm:max-h-[90vh] sm:w-full">
-          <DialogHeader className="pb-4">
+        <DialogContent className="mx-4 flex h-[90vh] w-[calc(100vw-2rem)] max-w-2xl flex-col overflow-hidden rounded-lg sm:mx-auto sm:h-auto sm:max-h-[90vh] sm:w-full">
+          <DialogHeader className="flex-shrink-0 pb-4">
             <DialogTitle className="flex items-center gap-2 text-lg">
               <Download className="h-5 w-5 text-orange-600" />
               抽出されたレシピ
@@ -1289,22 +1341,22 @@ export default function RecipeManagement({
             </DialogDescription>
           </DialogHeader>
           {extractedRecipe && (
-            <div className="flex-1 overflow-y-auto">
-              <div className="space-y-4">
+            <div className="flex-1 overflow-y-auto p-1">
+              <div className="space-y-6">
                 {/* 基本情報 */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-3 rounded-lg border bg-gray-50 p-4 sm:flex-row sm:items-center sm:gap-6">
                   {extractedRecipe.servings && (
                     <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-gray-600" />
-                      <span className="text-sm">
+                      <Users className="h-5 w-5 text-gray-500" />
+                      <span className="text-sm font-medium">
                         {extractedRecipe.servings}
                       </span>
                     </div>
                   )}
                   {extractedRecipe.cookingTime && (
                     <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-gray-600" />
-                      <span className="text-sm">
+                      <Clock className="h-5 w-5 text-gray-500" />
+                      <span className="text-sm font-medium">
                         {extractedRecipe.cookingTime}
                       </span>
                     </div>
@@ -1316,20 +1368,14 @@ export default function RecipeManagement({
                   <div className="flex items-center gap-2 text-sm text-blue-700">
                     <AlertCircle className="h-4 w-4" />
                     抽出方法:{' '}
-                    {extractedRecipe.extractionMethod ===
-                    'gemini_video_analysis'
-                      ? 'AI動画分析'
-                      : extractedRecipe.extractionMethod ===
-                          'gemini_text_analysis'
-                        ? 'AIテキスト分析'
-                        : '説明文から抽出'}
+                    {getExtractionMethodText(extractedRecipe.extractionMethod)}
                   </div>
                 </div>
 
                 {/* 材料 */}
                 <div className="space-y-3">
-                  <h4 className="flex items-center gap-2 font-semibold">
-                    <Package className="h-4 w-4 text-green-600" />
+                  <h4 className="flex items-center gap-2 text-base font-semibold">
+                    <Package className="h-5 w-5 text-green-600" />
                     材料 ({extractedRecipe.ingredients.length}個)
                   </h4>
                   {extractedRecipe.ingredients.length > 0 ? (
@@ -1337,8 +1383,9 @@ export default function RecipeManagement({
                       {extractedRecipe.ingredients.map((ingredient, index) => (
                         <div
                           key={index}
-                          className="flex items-center gap-2 rounded-lg border bg-green-50 p-3"
+                          className="flex items-start gap-3 rounded-md border bg-white p-3 shadow-sm"
                         >
+                          <Check className="h-5 w-5 flex-shrink-0 text-green-500" />
                           <span className="text-sm break-words">
                             {ingredient}
                           </span>
@@ -1354,8 +1401,8 @@ export default function RecipeManagement({
 
                 {/* 手順 */}
                 <div className="space-y-3">
-                  <h4 className="flex items-center gap-2 font-semibold">
-                    <List className="h-4 w-4 text-blue-600" />
+                  <h4 className="flex items-center gap-2 text-base font-semibold">
+                    <List className="h-5 w-5 text-blue-600" />
                     手順 ({extractedRecipe.steps.length}ステップ)
                   </h4>
                   {extractedRecipe.steps.length > 0 ? (
@@ -1363,12 +1410,14 @@ export default function RecipeManagement({
                       {extractedRecipe.steps.map((step, index) => (
                         <div
                           key={index}
-                          className="flex gap-3 rounded-lg border bg-blue-50 p-3"
+                          className="flex items-start gap-3 rounded-md border bg-white p-3 shadow-sm"
                         >
-                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
+                          <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
                             {index + 1}
                           </div>
-                          <span className="text-sm break-words">{step}</span>
+                          <p className="flex-1 text-sm leading-relaxed break-words">
+                            {step}
+                          </p>
                         </div>
                       ))}
                     </div>
@@ -1381,7 +1430,7 @@ export default function RecipeManagement({
               </div>
             </div>
           )}
-          <DialogFooter className="flex-col gap-2 border-t pt-4 sm:flex-row">
+          <DialogFooter className="flex-shrink-0 flex-col gap-2 border-t pt-4 sm:flex-row">
             <Button
               variant="outline"
               onClick={() => setShowRecipeDialog(false)}
