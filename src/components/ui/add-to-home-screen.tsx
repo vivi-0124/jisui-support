@@ -21,7 +21,7 @@ export function AddToHomeScreen({ open, onOpenChange }: AddToHomeScreenProps) {
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4">
-          <div className="relative aspect-[390/844] w-full max-w-[200px] mx-auto">
+          <div className="relative aspect-[200/300] w-full max-w-[200px] mx-auto">
             <Image
               src="/add-to-home-screen.jpg"
               alt="ホーム画面に追加する方法"
