@@ -47,6 +47,15 @@ export const themeColors = {
     background: 'orange-50',
     accent: 'orange-600',
   },
+  cooking: {
+    primary: 'amber-600',
+    secondary: 'amber-100',
+    hover: 'amber-700',
+    gradient: 'from-amber-500 to-amber-600',
+    gradientHover: 'from-amber-600 to-amber-700',
+    background: 'amber-50',
+    accent: 'amber-600',
+  },
 } as const;
 
 // ボタンのバリアント定義
@@ -63,6 +72,8 @@ export const buttonVariants = tv({
         'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl',
       search:
         'bg-orange-600 hover:bg-orange-700 text-white shadow-lg hover:shadow-xl',
+      cooking:
+        'bg-amber-600 hover:bg-amber-700 text-white shadow-lg hover:shadow-xl',
     },
     variant: {
       solid: '',
@@ -103,6 +114,11 @@ export const buttonVariants = tv({
       variant: 'outline',
       class: 'border-orange-600 text-orange-600 hover:bg-orange-50',
     },
+    {
+      theme: 'cooking',
+      variant: 'outline',
+      class: 'border-amber-600 text-amber-600 hover:bg-amber-50',
+    },
   ],
   defaultVariants: {
     theme: 'home',
@@ -125,6 +141,8 @@ export const gradientButtonVariants = tv({
         'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700',
       search:
         'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700',
+      cooking:
+        'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700',
     },
     size: {
       sm: 'h-10 w-10',
@@ -148,6 +166,7 @@ export const cardVariants = tv({
       shopping: 'bg-gradient-to-br from-purple-50 to-violet-50',
       recipes: 'bg-gradient-to-br from-blue-50 to-cyan-50',
       search: 'bg-gradient-to-br from-orange-50 to-amber-50',
+      cooking: 'bg-gradient-to-br from-amber-50 to-amber-50',
     },
   },
   defaultVariants: {
@@ -165,6 +184,7 @@ export const iconBackgroundVariants = tv({
       shopping: 'bg-purple-100',
       recipes: 'bg-blue-100',
       search: 'bg-orange-100',
+      cooking: 'bg-amber-100',
     },
   },
   defaultVariants: {
@@ -182,6 +202,7 @@ export const iconColorVariants = tv({
       shopping: 'text-purple-600',
       recipes: 'text-blue-600',
       search: 'text-orange-600',
+      cooking: 'text-amber-600',
     },
   },
   defaultVariants: {
@@ -199,6 +220,7 @@ export const textColorVariants = tv({
       shopping: 'text-purple-600',
       recipes: 'text-blue-600',
       search: 'text-orange-600',
+      cooking: 'text-amber-600',
     },
   },
   defaultVariants: {
@@ -216,6 +238,7 @@ export const headerVariants = tv({
       shopping: 'bg-purple-600',
       recipes: 'bg-blue-600',
       search: 'bg-orange-600',
+      cooking: 'bg-amber-600',
     },
   },
   defaultVariants: {
@@ -233,6 +256,7 @@ export const backgroundVariants = tv({
       shopping: 'bg-purple-50',
       recipes: 'bg-blue-50',
       search: 'bg-orange-50',
+      cooking: 'bg-amber-50',
     },
   },
   defaultVariants: {
@@ -250,6 +274,7 @@ export const headerButtonVariants = tv({
       shopping: 'hover:bg-purple-500',
       recipes: 'hover:bg-blue-500',
       search: 'hover:bg-orange-500',
+      cooking: 'hover:bg-amber-500',
     },
   },
   defaultVariants: {

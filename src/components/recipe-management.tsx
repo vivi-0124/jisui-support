@@ -1043,9 +1043,9 @@ export default function RecipeManagement({
   };
 
   return (
-    <div className="space-y-4 pb-4">
+    <div className="space-y-6">
       {/* ヘッダー統計 */}
-      <div className="flex flex-wrap items-center gap-4 text-xs text-gray-600 sm:gap-6 sm:text-sm">
+      <div className="flex items-center gap-6 text-sm text-gray-600">
         <div className="flex items-center gap-1">
           <List className={iconColorVariants({ theme: 'recipes' })} />
           <span>プレイリスト {playlists.length}個</span>
@@ -1064,8 +1064,8 @@ export default function RecipeManagement({
       </div>
 
       {/* ヘッダー */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-lg font-semibold sm:text-xl">レシピ管理</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">レシピ管理</h2>
         {playlists.length > 0 && (
           <AddPlaylistButton
             onSave={handleSavePlaylist}
@@ -1083,17 +1083,17 @@ export default function RecipeManagement({
       </div>
 
       {/* プレイリスト一覧 */}
-      <div className="space-y-3">
+      <div className="grid gap-4">
         {playlists.length === 0 ? (
           <Card>
-            <CardContent className="p-6 text-center sm:p-8">
+            <CardContent className="p-8 text-center">
               {user ? (
                 <>
-                  <Video className="mx-auto mb-3 h-12 w-12 text-blue-300 sm:mb-4 sm:h-16 sm:w-16" />
-                  <h3 className="mb-2 text-base font-semibold sm:text-lg">
+                  <Video className="mx-auto mb-4 h-16 w-16 text-blue-300" />
+                  <h3 className="mb-2 text-lg font-semibold">
                     プレイリストが空です
                   </h3>
-                  <p className="mb-4 text-sm text-gray-600 sm:text-base">
+                  <p className="mb-4 text-gray-600">
                     最初のプレイリストを作成して動画を整理しましょう
                   </p>
                   <AddPlaylistButton
@@ -1102,7 +1102,7 @@ export default function RecipeManagement({
                     onEditComplete={handleEditComplete}
                   >
                     <Button
-                      className={`w-full sm:w-auto ${buttonVariants({ theme: 'recipes' })}`}
+                      className={`${buttonVariants({ theme: 'recipes' })}`}
                     >
                       <Plus className="mr-2 h-4 w-4" />
                       プレイリスト作成
@@ -1111,11 +1111,11 @@ export default function RecipeManagement({
                 </>
               ) : (
                 <>
-                  <Video className="mx-auto mb-3 h-12 w-12 text-blue-300 sm:mb-4 sm:h-16 sm:w-16" />
-                  <h3 className="mb-2 text-base font-semibold sm:text-lg">
+                  <Video className="mx-auto mb-4 h-16 w-16 text-blue-300" />
+                  <h3 className="mb-2 text-lg font-semibold">
                     プレイリストが空です
                   </h3>
-                  <p className="mb-4 text-sm text-gray-600 sm:text-base">
+                  <p className="mb-4 text-gray-600">
                     ログインしてプレイリストを管理しましょう
                   </p>
                 </>
@@ -1311,15 +1311,6 @@ export default function RecipeManagement({
           </Accordion>
         )}
       </div>
-
-      {/* 隠しボタン */}
-      <AddPlaylistButton
-        onSave={handleSavePlaylist}
-        editingPlaylist={editingPlaylist}
-        onEditComplete={handleEditComplete}
-      >
-        <div style={{ display: 'none' }} />
-      </AddPlaylistButton>
 
       {/* ダイアログ */}
       <AddVideoDialog

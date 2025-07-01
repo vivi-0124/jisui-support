@@ -316,21 +316,58 @@ export default function IngredientsManagement({
 
         if (error) {
           console.error('Error updating ingredient:', error);
-        } else {
-          setIngredients(ingredients.map((i) => (i.id === data.id ? data : i)));
+        } else if (data) {
+          // 更新後、数量が0以下なら削除、そうでなければ更新
+          if (data.quantity <= 0) {
+            await handleDeleteIngredient(data.id);
+          } else {
+            setIngredients(ingredients.map((i) => (i.id === data.id ? data : i)));
+          }
         }
       } else {
-        // 新規作成
-        const { data, error } = await supabase
-          .from('ingredients')
-          .insert([{ ...ingredientData, user_id: user.id }])
-          .select()
-          .single();
+        // 新規作成時、同じ名前と単位の材料が既存かチェック
+        const existingIngredient = ingredients.find(
+          (i) => i.name === ingredientData.name && i.unit === ingredientData.unit
+        );
 
-        if (error) {
-          console.error('Error creating ingredient:', error);
-        } else if (data) {
-          setIngredients([...ingredients, data]);
+        if (existingIngredient) {
+          // 既存なら数量を更新
+          const newQuantity = existingIngredient.quantity + ingredientData.quantity;
+          if (newQuantity <= 0) {
+            await handleDeleteIngredient(existingIngredient.id);
+          } else {
+            const { data: updatedData, error: updateError } = await supabase
+              .from('ingredients')
+              .update({
+                quantity: newQuantity,
+                category: ingredientData.category,
+                expiry_date: ingredientData.expiry_date,
+                location: ingredientData.location,
+              })
+              .eq('id', existingIngredient.id)
+              .select()
+              .single();
+
+            if (updateError) {
+              console.error('Error updating existing ingredient quantity (Supabase):', updateError);
+            } else if (updatedData) {
+              setIngredients(ingredients.map((i) => (i.id === updatedData.id ? updatedData : i)));
+            }
+          }
+        } else {
+          // 新規作成
+          const { data, error } = await supabase
+            .from('ingredients')
+            .insert([{ ...ingredientData, user_id: user.id }])
+            .select() // select()を追加して、挿入されたデータを取得
+            .single();
+
+          if (error) {
+            console.error('Error creating ingredient:', error);
+          } else if (data && data.quantity > 0) {
+            setIngredients([...ingredients, data]);
+          }
+          // quantityが0以下の場合は追加しない
         }
       }
     } else {
@@ -347,17 +384,46 @@ export default function IngredientsManagement({
                 created_at: i.created_at,
               }
             : i
-        );
+        ).filter((i) => i.quantity > 0); // 数量が0以下の場合は除外
         setIngredients(updatedIngredients);
       } else {
-        // 新規作成
-        const newIngredientWithId: Ingredient = {
-          ...ingredientData,
-          id: crypto.randomUUID(),
-          user_id: 'local', // 仮のID
-          created_at: new Date().toISOString(),
-        };
-        setIngredients([...ingredients, newIngredientWithId]);
+        // 新規作成時、同じ名前と単位の材料が既存かチェック
+        const existingIngredient = ingredients.find(
+          (i) => i.name === ingredientData.name && i.unit === ingredientData.unit
+        );
+
+        if (existingIngredient) {
+          // 既存なら数量を更新
+          const newQuantity = existingIngredient.quantity + ingredientData.quantity;
+          if (newQuantity <= 0) {
+            setIngredients(ingredients.filter((i) => i.id !== existingIngredient.id));
+          } else {
+            const updatedIngredients = ingredients.map((i) =>
+              i.id === existingIngredient.id
+                ? {
+                    ...i,
+                    quantity: newQuantity,
+                    category: ingredientData.category,
+                    expiry_date: ingredientData.expiry_date,
+                    location: ingredientData.location,
+                  }
+                : i
+            );
+            setIngredients(updatedIngredients);
+          }
+        } else {
+          // 新規作成
+          const newIngredientWithId: Ingredient = {
+            ...ingredientData,
+            id: crypto.randomUUID(),
+            user_id: 'local', // 仮のID
+            created_at: new Date().toISOString(),
+          };
+          if (newIngredientWithId.quantity > 0) {
+            setIngredients([...ingredients, newIngredientWithId]);
+          }
+          // quantityが0以下の場合は追加しない
+        }
       }
     }
     setEditingIngredient(null);
@@ -513,14 +579,6 @@ export default function IngredientsManagement({
           })
         )}
       </div>
-
-      <AddIngredientButton
-        onSave={handleSaveIngredient}
-        editingIngredient={editingIngredient}
-        onEditComplete={handleEditComplete}
-      >
-        <div style={{ display: 'none' }} />
-      </AddIngredientButton>
     </div>
   );
 }

@@ -552,7 +552,7 @@ export default function CookingManagement({
     return (
       <div className="flex min-h-[400px] items-center justify-center">
         <div className="space-y-4 text-center">
-          <Loader2 className="mx-auto h-8 w-8 animate-spin text-orange-600" />
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-amber-600" />
           <p className="text-gray-600">調理可能なレシピを分析中...</p>
         </div>
       </div>
@@ -572,10 +572,10 @@ export default function CookingManagement({
   }
 
   return (
-    <div className="max-w-full min-w-0 space-y-6 overflow-hidden">
-      <div className="flex items-center gap-6 text-sm text-gray-600">
+    <div className="mb-6">
+      <div className="flex items-center gap-6 mb-6 text-sm text-gray-600">
         <div className="flex items-center gap-1">
-          <ChefHat className={iconColorVariants({ theme: 'search' })} />
+          <ChefHat className={iconColorVariants({ theme: 'cooking' })} />
           <span>調理可能 {cookableRecipes.length}品</span>
         </div>
         <div className="flex items-center gap-1">
@@ -588,14 +588,12 @@ export default function CookingManagement({
         </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-xl font-semibold">
-          料理する
-        </h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-semibold">料理する</h2>
         {user && (
           <Button
             onClick={() => setRecipeDialogOpen(true)}
-            className={`${buttonVariants({ theme: 'search' })}`}
+            className={`${buttonVariants({ theme: 'cooking' })}`}
           >
             <Plus className="mr-2 h-4 w-4" />
             料理開始
@@ -603,16 +601,17 @@ export default function CookingManagement({
         )}
       </div>
 
-      {/* 料理開始ボタン下の空状態 */}
-      {cookableRecipes.length === 0 && !user && (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <ChefHat className="mx-auto mb-4 h-12 w-12 text-gray-300" />
-            <h3 className="mb-2 text-lg font-semibold">調理可能なレシピがありません</h3>
-            <p className="text-gray-600">ログインしてレシピを登録しましょう</p>
-          </CardContent>
-        </Card>
-      )}
+      <div className="grid gap-4">
+        {cookableRecipes.length === 0 && !user && (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <ChefHat className="mx-auto mb-4 h-16 w-16 text-amber-600" />
+              <h3 className="mb-2 text-lg font-semibold">調理可能なレシピがありません</h3>
+              <p className="mb-4 text-gray-600">ログインしてレシピを登録しましょう</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {/* 調理履歴（ログインユーザーのみ） */}
       {user && (
@@ -785,7 +784,7 @@ function RecipeList({
                 <Button
                   onClick={() => onStartCooking(recipe)}
                   disabled={analyzingVideoId === recipe.video.id}
-                  className={`flex-1 ${buttonVariants({ theme: 'search' })}`}
+                  className={`flex-1 ${buttonVariants({ theme: 'cooking' })}`}
                 >
                   {analyzingVideoId === recipe.video.id ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1029,7 +1028,7 @@ function CookingInterface({
             onChange={(e) => setNotes(e.target.value)}
             placeholder="調理中の気づきや感想を記録..."
             rows={3}
-            className="w-full resize-none rounded-lg border p-3 focus:border-transparent focus:ring-2 focus:ring-orange-500"
+            className="w-full resize-none rounded-lg border p-3 focus:border-transparent focus:ring-2 focus:ring-amber-500"
           />
         </CardContent>
       </Card>
@@ -1042,7 +1041,7 @@ function CookingInterface({
         <Button
           onClick={handleComplete}
           disabled={isCompleting}
-          className={`flex-1 ${buttonVariants({ theme: 'search' })}`}
+          className={`flex-1 ${buttonVariants({ theme: 'cooking' })}`}
         >
           {isCompleting ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
