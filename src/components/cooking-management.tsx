@@ -605,7 +605,7 @@ export default function CookingManagement({
         {cookableRecipes.length === 0 && !user && (
           <Card>
             <CardContent className="p-8 text-center">
-              <ChefHat className="mx-auto mb-4 h-16 w-16 text-amber-600" />
+              <ChefHat className="mx-auto mb-4 h-16 w-16 text-amber-300" />
               <h3 className="mb-2 text-lg font-semibold">調理可能なレシピがありません</h3>
               <p className="mb-4 text-gray-600">ログインしてレシピを登録しましょう</p>
             </CardContent>

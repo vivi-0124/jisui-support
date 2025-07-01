@@ -462,7 +462,7 @@ export default function JisuiSupport() {
             </TabsTrigger>
             <TabsTrigger
               value="cooking"
-              className={`flex flex-col items-center gap-1 px-2 py-1 text-xs data-[state=active]:text-orange-600`}
+              className={`flex flex-col items-center gap-1 px-2 py-1 text-xs data-[state=active]:text-amber-600`}
             >
               <ChefHat className="h-4 w-4" />
               料理する
