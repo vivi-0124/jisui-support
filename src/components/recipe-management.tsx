@@ -1072,9 +1072,7 @@ export default function RecipeManagement({
             editingPlaylist={editingPlaylist}
             onEditComplete={handleEditComplete}
           >
-            <Button
-              className={`w-full sm:w-auto ${buttonVariants({ theme: 'recipes' })}`}
-            >
+            <Button className={buttonVariants({ theme: 'recipes' })}>
               <Plus className="mr-2 h-4 w-4" />
               プレイリスト作成
             </Button>
