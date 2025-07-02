@@ -344,7 +344,7 @@ export default function JisuiSupport() {
       {/* Main Content */}
       <main className="relative mx-auto max-w-6xl p-4">
         {/* ホーム画面追加ヒントボタン（メイン左上） */}
-        <div className="absolute -top-0 -left-0">
+        <div className="absolute -top-0 -right-0">
           <Button
             variant="ghost"
             size="sm"
