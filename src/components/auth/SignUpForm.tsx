@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Mail, Lock, Chrome } from 'lucide-react';
+import { Loader2, Mail, Lock, Chrome, UserPlus } from 'lucide-react';
 
 interface SignUpFormProps {
   onToggleMode: () => void;
@@ -31,7 +31,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const { supabase } = useAuth();
+  const { supabase, user } = useAuth();
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
@@ -41,6 +41,24 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
     });
     if (error) {
       setError(error.message);
+      setLoading(false);
+    }
+  };
+
+  const handleAnonymousSignUp = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { error } = await supabase.auth.signInAnonymously();
+      if (error) {
+        setError(error.message);
+      } else {
+        setSuccess('匿名アカウントを作成しました');
+        onAuthSuccess();
+      }
+    } catch {
+      setError('匿名アカウントの作成に失敗しました');
+    } finally {
       setLoading(false);
     }
   };
@@ -64,12 +82,23 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-      if (error) {
-        setError(error.message);
+      let result;
+      if (user?.id) {
+        // 既存の匿名ユーザーの場合、アカウントをリンク
+        result = await supabase.auth.updateUser({
+          email,
+          password,
+        });
+      } else {
+        // 新規ユーザー登録
+        result = await supabase.auth.signUp({
+          email,
+          password,
+        });
+      }
+
+      if (result.error) {
+        setError(result.error.message);
       } else {
         setSuccess('確認メールを送信しました。メールをご確認ください。');
         onAuthSuccess();
@@ -88,16 +117,15 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
           アカウント作成
         </CardTitle>
         <CardDescription className="text-gray-500">
-          新しいアカウントを作成してください
+          {user?.id
+            ? 'メールアドレスとパスワードを設定してアカウントを完成させましょう'
+            : 'アカウントを作成して機能を最大限に活用しましょう'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label
-              htmlFor="email"
-              className="text-sm font-medium text-gray-700"
-            >
+            <Label htmlFor="email" className="text-sm font-medium text-gray-700">
               メールアドレス
             </Label>
             <div className="relative">
@@ -114,6 +142,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
               />
             </div>
           </div>
+
           <div className="space-y-2">
             <Label
               htmlFor="password"
@@ -126,7 +155,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
               <Input
                 id="password"
                 type="password"
-                placeholder="6文字以上のパスワード"
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -135,19 +164,20 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
               />
             </div>
           </div>
+
           <div className="space-y-2">
             <Label
               htmlFor="confirmPassword"
               className="text-sm font-medium text-gray-700"
             >
-              パスワード確認
+              パスワード（確認）
             </Label>
             <div className="relative">
               <Lock className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
               <Input
                 id="confirmPassword"
                 type="password"
-                placeholder="パスワードを再入力"
+                placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
@@ -156,56 +186,77 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
               />
             </div>
           </div>
+
           {error && (
-            <Alert variant="destructive" className="rounded-xl">
+            <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
+
           {success && (
-            <Alert className="rounded-xl border-green-200 bg-green-50">
-              <AlertDescription className="text-green-800">
-                {success}
-              </AlertDescription>
+            <Alert>
+              <AlertDescription>{success}</AlertDescription>
             </Alert>
           )}
+
           <Button
             type="submit"
-            className="h-11 w-full rounded-xl bg-gradient-to-r from-green-500 via-purple-500 to-blue-500 text-white shadow-md transition-all duration-200 hover:from-green-600 hover:via-purple-600 hover:to-blue-600 hover:shadow-lg"
+            className="h-11 w-full rounded-xl bg-gradient-to-r from-green-500 via-purple-500 to-blue-500 font-semibold text-white shadow-md transition-all duration-200 hover:from-green-600 hover:via-purple-600 hover:to-blue-600 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
             disabled={loading}
           >
             {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                作成中...
-              </>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              'アカウント作成'
+              <>
+                <Mail className="mr-2 h-4 w-4" />
+                {user?.id ? 'アカウントを完成させる' : 'メールアドレスで登録'}
+              </>
             )}
           </Button>
         </form>
 
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-gray-200" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-white px-2 text-gray-500">または</span>
-          </div>
-        </div>
+        {!user?.id && (
+          <>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-gray-500">または</span>
+              </div>
+            </div>
 
-        <Button
-          variant="outline"
-          className="h-11 w-full rounded-xl border-2 border-gray-200 transition-all duration-200 hover:border-gray-300 hover:bg-gray-50"
-          onClick={handleGoogleSignIn}
-          disabled={loading}
-        >
-          {loading ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Chrome className="mr-2 h-4 w-4" />
-          )}
-          Googleで登録
-        </Button>
+            <div className="space-y-3">
+              <Button
+                variant="outline"
+                className="h-11 w-full rounded-xl border-2 border-gray-200 transition-all duration-200 hover:border-gray-300 hover:bg-gray-50"
+                onClick={handleGoogleSignIn}
+                disabled={loading}
+              >
+                {loading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Chrome className="mr-2 h-4 w-4" />
+                )}
+                Googleでログイン
+              </Button>
+
+              <Button
+                variant="outline"
+                className="h-11 w-full rounded-xl border-2 border-gray-200 transition-all duration-200 hover:border-gray-300 hover:bg-gray-50"
+                onClick={handleAnonymousSignUp}
+                disabled={loading}
+              >
+                {loading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <UserPlus className="mr-2 h-4 w-4" />
+                )}
+                匿名で始める
+              </Button>
+            </div>
+          </>
+        )}
 
         <div className="text-center">
           <Button
