@@ -586,7 +586,7 @@ export default function CookingManagement({
 
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold">料理する</h2>
-        {user && (
+        {user && cookingSessions.length > 0 && (
           <Button
             onClick={() => setRecipeDialogOpen(true)}
             className={`${buttonVariants({ theme: 'cooking' })}`}
@@ -611,7 +611,11 @@ export default function CookingManagement({
 
       {/* 調理履歴（ログインユーザーのみ） */}
       {user && (
-        <CookingHistory sessions={cookingSessions} user={user} />
+        <CookingHistory 
+          sessions={cookingSessions} 
+          user={user} 
+          onStartCooking={() => setRecipeDialogOpen(true)}
+        />
       )}
 
       {/* レシピ選択ダイアログ */}
@@ -811,9 +815,11 @@ function RecipeList({
 function CookingHistory({
   sessions,
   user,
+  onStartCooking,
 }: {
   sessions: CookingSession[];
   user: User | null;
+  onStartCooking: () => void;
 }) {
   if (sessions.length === 0) {
     return (
@@ -826,6 +832,15 @@ function CookingHistory({
               ? '料理を作って履歴を蓄積しましょう'
               : 'ログインして調理履歴を確認しましょう'}
           </p>
+          {user && (
+            <Button
+              onClick={onStartCooking}
+              className={`${buttonVariants({ theme: 'cooking' })}`}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              料理開始
+            </Button>
+          )}
         </CardContent>
       </Card>
     );
