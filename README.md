@@ -1,4 +1,4 @@
-# Mealog（ミーログ）
+# (仮)Mealog（ミーログ）
 サービスURL : https://jisui-support.vercel.app/
 ランディングページURL : https://jisui-support-lp.vercel.app/
 
