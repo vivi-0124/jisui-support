@@ -395,20 +395,24 @@ export default function JisuiSupport() {
       {/* Header */}
       <header className={headerVariants({ theme: 'home' })}>
         <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            className="flex items-center gap-3 px-2"
+            onClick={() => setActiveTab('home')}
+          >
             <Home className="h-6 w-6" />
             <h1 className="text-xl font-bold">自炊サポート</h1>
-          </div>
+          </Button>
 
           <div className="flex items-center gap-3">
             <Sheet open={searchOpen} onOpenChange={setSearchOpen}>
               <SheetTrigger asChild>
                 <Button
-                  variant="ghost"
                   size="sm"
-                  className={headerButtonVariants({ theme: 'home' })}
+                  className="flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-2 text-white shadow-md transition-all duration-200 hover:from-orange-600 hover:to-orange-700 hover:shadow-lg"
                 >
-                  <Search className="mr-1 h-5 w-5" />
+                  <Search className="h-5 w-5" />
+                  <span>検索</span>
                 </Button>
               </SheetTrigger>
               <SheetContent
@@ -475,10 +479,12 @@ export default function JisuiSupport() {
             {/* Welcome Section */}
             <div className="space-y-3 pt-6 text-center">
               <h2 className="bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-3xl font-bold text-transparent">
-                おかえりなさい！
+                {user ? 'おかえりなさい！' : 'ようこそ！'}
               </h2>
               <p className={`text-lg ${textColorVariants({ theme: 'home' })}`}>
-                今日も自炊を楽しくサポートします
+                {user
+                  ? '今日も自炊を楽しくサポートします'
+                  : '自炊サポートへようこそ。あなたの食生活を豊かにします。'}
               </p>
             </div>
 

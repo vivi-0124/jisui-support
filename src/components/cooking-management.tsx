@@ -825,7 +825,7 @@ function CookingHistory({
     return (
       <Card>
         <CardContent className="p-8 text-center">
-          <Timer className="mx-auto mb-4 h-16 w-16 text-purple-300" />
+          <Timer className="mx-auto mb-4 h-16 w-16 text-amber-300" />
           <h3 className="mb-2 text-lg font-semibold">調理履歴がありません</h3>
           <p className="mb-4 text-gray-600">
             {user
