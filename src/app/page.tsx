@@ -57,6 +57,7 @@ import {
   Download,
   Loader2,
   HelpCircle,
+  AlertTriangle,
 } from 'lucide-react';
 import IngredientsManagement, {
   Ingredient,
@@ -950,6 +951,10 @@ function VideoCard({
   const [extractedRecipe, setExtractedRecipe] =
     useState<ExtractedRecipe | null>(null);
   const [extractingRecipe, setExtractingRecipe] = useState(false);
+  const [errorDialog, setErrorDialog] = useState<{
+    open: boolean;
+    message: string;
+  }>({ open: false, message: '' });
   const { user } = useAuth();
 
   const handleSaveClick = () => {
@@ -962,6 +967,7 @@ function VideoCard({
 
   const handleExtractRecipe = async () => {
     setExtractingRecipe(true);
+    setErrorDialog({ open: false, message: '' });
     try {
       const response = await fetch(
         `/api/youtube/extract-recipe?videoId=${video.videoId}`
@@ -972,11 +978,17 @@ function VideoCard({
         setExtractedRecipe(data.recipe);
         setShowRecipeDialog(true);
       } else {
-        alert(data.error || 'レシピの抽出に失敗しました');
+        setErrorDialog({
+          open: true,
+          message: data.error || 'レシピの抽出に失敗しました',
+        });
       }
     } catch (error) {
       console.error('Recipe extraction error:', error);
-      alert('レシピの抽出中にエラーが発生しました');
+      setErrorDialog({
+        open: true,
+        message: 'レシピの抽出中にエラーが発生しました',
+      });
     } finally {
       setExtractingRecipe(false);
     }
@@ -1275,15 +1287,7 @@ function VideoCard({
             {extractedRecipe && (
               <div className="space-y-6 py-4">
                 {/* 基本情報 */}
-                <div className="grid grid-cols-2 gap-4">
-                  {extractedRecipe.servings && (
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-gray-600" />
-                      <span className="text-sm">
-                        {extractedRecipe.servings}
-                      </span>
-                    </div>
-                  )}
+                <div className="grid grid-cols-2">
                   {extractedRecipe.cookingTime && (
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-gray-600" />
@@ -1294,24 +1298,14 @@ function VideoCard({
                   )}
                 </div>
 
-                {/* 抽出方法の表示 */}
-                <div className="rounded-lg bg-blue-50 p-3">
-                  <div className="flex items-center gap-2 text-sm text-blue-700">
-                    <AlertCircle className="h-4 w-4" />
-                    抽出方法:{' '}
-                    {extractedRecipe.extractionMethod === 'captions'
-                      ? '字幕から抽出'
-                      : extractedRecipe.extractionMethod === 'ai_analysis'
-                        ? 'AI分析'
-                        : '説明文から抽出'}
-                  </div>
-                </div>
-
                 {/* 材料 */}
                 <div className="space-y-3">
                   <h4 className="flex items-center gap-2 font-semibold">
                     <Package className="h-4 w-4 text-green-600" />
-                    材料 ({extractedRecipe.ingredients.length}個)
+                    材料 (
+                    {extractedRecipe.servings ||
+                      `${extractedRecipe.ingredients.length}個`}
+                    )
                   </h4>
                   {extractedRecipe.ingredients.length > 0 ? (
                     <div className="grid gap-2">
@@ -1365,6 +1359,29 @@ function VideoCard({
                 onClick={() => setShowRecipeDialog(false)}
               >
                 閉じる
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* エラー表示ダイアログ */}
+        <Dialog
+          open={errorDialog.open}
+          onOpenChange={(open) => setErrorDialog({ ...errorDialog, open })}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-6 w-6 text-red-500" />
+                <span>レシピの取得に失敗しました</span>
+              </DialogTitle>
+              <DialogDescription className="pt-4">
+                {errorDialog.message}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button onClick={() => setErrorDialog({ open: false, message: '' })}>
+                OK
               </Button>
             </DialogFooter>
           </DialogContent>

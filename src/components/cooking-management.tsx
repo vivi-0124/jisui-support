@@ -35,6 +35,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 
 interface CookingManagementProps {
@@ -108,6 +110,10 @@ export default function CookingManagement({
     null
   );
   const [recipeDialogOpen, setRecipeDialogOpen] = useState(false);
+  const [errorDialog, setErrorDialog] = useState<{
+    open: boolean;
+    message: string;
+  }>({ open: false, message: '' });
 
   const { user } = useAuth();
 
@@ -380,9 +386,11 @@ export default function CookingManagement({
 
   const analyzeRecipe = async (
     video: RecipeVideo
-  ): Promise<ExtractedRecipe | null> => {
+  ): Promise<{ recipe: ExtractedRecipe | null; error?: string }> => {
     const videoId = extractVideoId(video.url);
-    if (!videoId) return null;
+    if (!videoId) {
+      return { recipe: null, error: '有効なYouTube URLではありません。' };
+    }
 
     try {
       const response = await fetch(
@@ -421,24 +429,30 @@ export default function CookingManagement({
           }
         }
 
-        return extractedRecipe;
+        return { recipe: extractedRecipe };
+      } else {
+        return { recipe: null, error: data.error };
       }
     } catch (error) {
       console.error('レシピ分析エラー:', error);
+      return { recipe: null, error: 'レシピの分析中に不明なエラーが発生しました。' };
     }
-
-    return null;
   };
 
   const startCooking = async (recipe: CookableRecipe) => {
     if (!recipe.extractedRecipe) {
       // レシピ分析が必要
       setAnalyzingVideoId(recipe.video.id);
-      const extractedRecipe = await analyzeRecipe(recipe.video);
+      const { recipe: extractedRecipe, error } = await analyzeRecipe(
+        recipe.video
+      );
       setAnalyzingVideoId(null);
 
-      if (!extractedRecipe) {
-        alert('レシピの分析に失敗しました');
+      if (error || !extractedRecipe) {
+        setErrorDialog({
+          open: true,
+          message: error || 'レシピの分析に失敗しました',
+        });
         return;
       }
 
@@ -650,6 +664,29 @@ export default function CookingManagement({
               />
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* エラー表示ダイアログ */}
+      <Dialog
+        open={errorDialog.open}
+        onOpenChange={(open) => setErrorDialog({ ...errorDialog, open })}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-6 w-6 text-red-500" />
+              <span>レシピの取得に失敗しました</span>
+            </DialogTitle>
+            <DialogDescription className="pt-4">
+              {errorDialog.message}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setErrorDialog({ open: false, message: '' })}>
+              OK
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

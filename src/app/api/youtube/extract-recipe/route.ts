@@ -26,20 +26,7 @@ interface ExtractedRecipe {
   servings?: string;
   cookingTime?: string;
   description: string;
-  extractionMethod:
-    | 'gemini_video_analysis'
-    | 'gemini_text_analysis'
-    | 'description'
-    | 'database';
 }
-
-// データベース保存用の型
-type RecipeForDB = Omit<ExtractedRecipe, 'extractionMethod'> & {
-  extractionMethod:
-    | 'gemini_video_analysis'
-    | 'gemini_text_analysis'
-    | 'description';
-};
 
 export async function GET(request: NextRequest) {
   try {
@@ -79,7 +66,6 @@ export async function GET(request: NextRequest) {
             servings: dbRecipe.servings,
             cookingTime: dbRecipe.cooking_time,
             description: dbRecipe.description || '',
-            extractionMethod: 'database',
           } as ExtractedRecipe,
         });
       }
@@ -106,42 +92,43 @@ export async function GET(request: NextRequest) {
 
     let extractedRecipe: ExtractedRecipe;
 
-    // 3. Gemini APIが利用可能な場合は動画分析を試行
+    // 3. Gemini APIが利用可能な場合はテキスト分析を試行
     if (geminiApiKey) {
       try {
-        console.log('Gemini APIで動画分析を開始...');
-        extractedRecipe = await analyzeVideoWithGemini(
-          videoId,
+        console.log('Gemini APIでテキスト分析を開始...');
+        extractedRecipe = await analyzeTextWithGemini(
           videoDetails,
           geminiApiKey
         );
-        console.log('Gemini APIで動画分析完了');
+        console.log('Gemini APIでテキスト分析完了');
       } catch (geminiError) {
-        console.log(
-          'Gemini動画分析失敗、テキスト分析にフォールバック:',
-          geminiError
+        console.error('Geminiテキスト分析失敗:', geminiError);
+        return NextResponse.json(
+          { error: 'AIによるレシピの抽出に失敗しました。' },
+          { status: 500 }
         );
-
-        // 動画分析が失敗した場合はテキスト分析を試行
-        try {
-          extractedRecipe = await analyzeTextWithGemini(
-            videoDetails,
-            geminiApiKey
-          );
-        } catch (textError) {
-          console.log('Geminiテキスト分析も失敗、説明文から抽出:', textError);
-          extractedRecipe = extractRecipeFromDescription(
-            videoDetails.title,
-            videoDetails.description
-          );
-        }
       }
     } else {
-      // Gemini APIが利用できない場合は説明文から抽出
-      console.log('Gemini APIキーが設定されていません。説明文から抽出します。');
-      extractedRecipe = extractRecipeFromDescription(
-        videoDetails.title,
-        videoDetails.description
+      // Gemini APIが利用できない場合はエラー
+      console.error('Gemini APIキーが設定されていません。');
+      return NextResponse.json(
+        { error: 'レシピ抽出機能が設定されていません。' },
+        { status: 500 }
+      );
+    }
+
+    // 抽出結果の検証
+    if (
+      (extractedRecipe.ingredients &&
+        extractedRecipe.ingredients.length === 0) &&
+      (extractedRecipe.steps && extractedRecipe.steps.length === 0)
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            '動画の説明欄からレシピ情報（材料と手順）を抽出できませんでした。',
+        },
+        { status: 422 }
       );
     }
 
@@ -159,8 +146,6 @@ export async function GET(request: NextRequest) {
             servings: extractedRecipe.servings,
             cooking_time: extractedRecipe.cookingTime,
             description: videoDetails.description,
-            extraction_method: (extractedRecipe as RecipeForDB)
-              .extractionMethod,
             video_url: `https://www.youtube.com/watch?v=${videoId}`,
             video_title: videoDetails.title,
             video_thumbnail: videoDetails.thumbnail,
@@ -209,94 +194,6 @@ async function getVideoDetails(videoId: string, apiKey: string) {
   };
 }
 
-async function analyzeVideoWithGemini(
-  videoId: string,
-  videoDetails: {
-    title: string;
-    description: string;
-    channelTitle: string;
-    thumbnail: string;
-  },
-  apiKey: string
-): Promise<ExtractedRecipe> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
-
-  // YouTube動画のURLを構築
-  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-
-  const prompt = `
-この料理動画を分析して、以下の情報を抽出してください：
-
-動画タイトル: ${videoDetails.title}
-動画URL: ${videoUrl}
-
-以下の形式でJSONで回答してください：
-{
-  "ingredients": [
-    "材料名 分量単位",
-    "例: 玉ねぎ 1個",
-    "例: 醤油 大さじ2"
-  ],
-  "steps": [
-    "手順1の詳細な説明",
-    "手順2の詳細な説明"
-  ],
-  "servings": "何人分",
-  "cookingTime": "調理時間（分）",
-  "tips": "料理のコツやポイント"
-}
-
-重要な指示：
-1. 材料は具体的な分量と単位を含めて記載してください
-2. 手順は順序立てて、具体的に記載してください
-3. 動画で実際に使用されている材料と手順のみを抽出してください
-4. 推測ではなく、動画で確認できる内容のみを記載してください
-5. 日本語で回答してください
-
-動画の内容を詳しく分析して、正確な料理レシピを抽出してください。
-`;
-
-  try {
-    // Gemini 1.5 Proは動画URLを直接分析できる
-    const result = await model.generateContent([
-      {
-        text: prompt,
-      },
-      {
-        fileData: {
-          mimeType: 'video/*',
-          fileUri: videoUrl,
-        },
-      },
-    ]);
-
-    const response = await result.response;
-    const text = response.text();
-
-    // JSONレスポンスをパース
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('有効なJSONレスポンスが見つかりません');
-    }
-
-    const recipeData = JSON.parse(jsonMatch[0]);
-
-    return {
-      title: videoDetails.title,
-      ingredients: recipeData.ingredients || [],
-      steps: recipeData.steps || [],
-      servings: recipeData.servings,
-      cookingTime: recipeData.cookingTime,
-      description: videoDetails.description,
-      extractionMethod: 'gemini_video_analysis',
-    };
-  } catch (error) {
-    console.error('Gemini動画分析エラー:', error);
-    throw error;
-  }
-}
-
 async function analyzeTextWithGemini(
   videoDetails: {
     title: string;
@@ -307,53 +204,57 @@ async function analyzeTextWithGemini(
   apiKey: string
 ): Promise<ExtractedRecipe> {
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
 
-  const prompt = `
-以下のYouTube料理動画のタイトルと説明文から、料理のレシピ情報を抽出してください。
+  const prompt = `あなたは料理レシピ抽出の専門家です。
+以下のYouTube料理動画の情報から、レシピを抽出し、指定されたJSON形式で出力してください。
 
-タイトル: ${videoDetails.title}
-説明文: ${videoDetails.description}
-チャンネル名: ${videoDetails.channelTitle}
+# 入力情報
+- タイトル: ${videoDetails.title}
+- 説明文: ${videoDetails.description}
+- チャンネル名: ${videoDetails.channelTitle}
 
-以下の形式でJSONで回答してください：
+# 出力形式
+必ず以下のJSON形式に従ってください。
+説明文に記載がない項目は、キーはそのままに、値はnullまたは空配列にしてください。
+JSON以外のテキスト（例：「はい、承知しました」などの前置き）は一切含めないでください。
+
 {
-  "ingredients": [
-    "材料名 分量単位",
-    "例: 玉ねぎ 1個",
-    "例: 醤油 大さじ2"
-  ],
-  "steps": [
-    "手順1の詳細な説明",
-    "手順2の詳細な説明"
-  ],
-  "servings": "何人分",
-  "cookingTime": "調理時間（分）"
+  "ingredients": ["材料1", "材料2", ...],
+  "steps": ["手順1", "手順2", ...],
+  "servings": "X人分",
+  "cookingTime": "X分"
 }
 
-重要な指示：
-1. 材料は具体的な分量と単位を含めて記載してください
-2. 手順は順序立てて、具体的に記載してください
-3. 説明文に記載されていない情報は推測で補完してください
-4. 料理名から一般的な材料や手順を推測して追加してください
-5. 日本語で回答してください
-6. 最低でも5つの材料と5つの手順を含めてください
-
-料理の専門知識を活用して、実用的なレシピを作成してください。
+# 指示
+- 説明文から材料（分量含む）と手順を正確に抜き出してください。
+- 材料が見つからない場合は \`"ingredients": []\` としてください。
+- 手順が見つからない場合は \`"steps": []\` としてください。
+- \`servings\` と \`cookingTime\` が見つからない場合は、そのキーの値に \`null\` を設定してください。
+- 説明文に書かれていないことは絶対に推測しないでください。
+- 必ず日本語で、指定されたJSON形式のみを出力してください。
 `;
 
   try {
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    const text = response.text();
+    let text = response.text();
 
-    // JSONレスポンスをパース
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('有効なJSONレスポンスが見つかりません');
+    // AIの応答からJSON部分を抽出するロジックを強化
+    const markdownMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+    if (markdownMatch && markdownMatch[1]) {
+      // 1. Markdownブロックがある場合は、その中身を抽出
+      text = markdownMatch[1];
+    } else {
+      // 2. ない場合は、最初と最後の波括弧で囲まれた部分を抽出
+      const firstBrace = text.indexOf('{');
+      const lastBrace = text.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        text = text.slice(firstBrace, lastBrace + 1);
+      }
     }
 
-    const recipeData = JSON.parse(jsonMatch[0]);
+    const recipeData = JSON.parse(text);
 
     return {
       title: videoDetails.title,
@@ -362,165 +263,9 @@ async function analyzeTextWithGemini(
       servings: recipeData.servings,
       cookingTime: recipeData.cookingTime,
       description: videoDetails.description,
-      extractionMethod: 'gemini_text_analysis',
     };
   } catch (error) {
     console.error('Geminiテキスト分析エラー:', error);
     throw error;
   }
-}
-
-function extractRecipeFromDescription(
-  title: string,
-  description: string
-): ExtractedRecipe {
-  const lines = description
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line);
-
-  const ingredients: string[] = [];
-  const steps: string[] = [];
-  let servings: string | undefined;
-  let cookingTime: string | undefined;
-
-  let currentSection = '';
-  let stepCounter = 0;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const lowerLine = line.toLowerCase();
-
-    // セクションの判定
-    if (lowerLine.includes('材料') || lowerLine.includes('ingredient')) {
-      currentSection = 'ingredients';
-      continue;
-    }
-
-    if (
-      lowerLine.includes('作り方') ||
-      lowerLine.includes('手順') ||
-      lowerLine.includes('レシピ') ||
-      lowerLine.includes('method') ||
-      lowerLine.includes('instruction') ||
-      lowerLine.includes('step')
-    ) {
-      currentSection = 'steps';
-      stepCounter = 0;
-      continue;
-    }
-
-    // 人数の抽出
-    if (lowerLine.includes('人分') || lowerLine.includes('serving')) {
-      const servingMatch = line.match(/(\d+)人分|(\d+)\s*serving/i);
-      if (servingMatch) {
-        servings = servingMatch[1] || servingMatch[2] + '人分';
-      }
-      continue;
-    }
-
-    // 調理時間の抽出
-    if (
-      lowerLine.includes('分') &&
-      (lowerLine.includes('時間') ||
-        lowerLine.includes('調理') ||
-        lowerLine.includes('time'))
-    ) {
-      const timeMatch = line.match(/(\d+)分|(\d+)\s*min/i);
-      if (timeMatch) {
-        cookingTime = timeMatch[1] || timeMatch[2] + '分';
-      }
-      continue;
-    }
-
-    // 材料の抽出
-    if (currentSection === 'ingredients') {
-      if (
-        line.match(/[・•\-\*]/) ||
-        line.match(/\d+/) ||
-        line.match(/(g|ml|個|本|枚|袋|パック|大さじ|小さじ|カップ|適量|少々)/)
-      ) {
-        const cleanedLine = line.replace(/^[・•\-\*\s]+/, '');
-        if (
-          cleanedLine &&
-          !cleanedLine.includes('http') &&
-          cleanedLine.length < 100
-        ) {
-          ingredients.push(cleanedLine);
-        }
-      }
-    }
-
-    // 手順の抽出
-    if (currentSection === 'steps') {
-      if (
-        line.match(/^\d+[\.．\)）]/) ||
-        line.match(/[・•\-\*]/) ||
-        (stepCounter < 20 && line.length > 10 && line.length < 200)
-      ) {
-        let cleanedLine = line.replace(/^\d+[\.．\)）\s]*/, '');
-        cleanedLine = cleanedLine.replace(/^[・•\-\*\s]+/, '');
-
-        if (
-          cleanedLine &&
-          !cleanedLine.includes('http') &&
-          !cleanedLine.includes('チャンネル') &&
-          !cleanedLine.includes('登録')
-        ) {
-          steps.push(cleanedLine);
-          stepCounter++;
-        }
-      }
-    }
-  }
-
-  // 材料が見つからない場合、タイトルから推測
-  if (ingredients.length === 0) {
-    const commonIngredients = extractIngredientsFromTitle(title);
-    ingredients.push(...commonIngredients);
-  }
-
-  return {
-    title,
-    ingredients,
-    steps,
-    servings,
-    cookingTime,
-    description,
-    extractionMethod: 'description',
-  };
-}
-
-function extractIngredientsFromTitle(title: string): string[] {
-  const ingredients: string[] = [];
-  const commonIngredients = [
-    '玉ねぎ',
-    'にんじん',
-    'じゃがいも',
-    '豚肉',
-    '牛肉',
-    '鶏肉',
-    '卵',
-    '米',
-    'パン',
-    'パスタ',
-    'トマト',
-    'きゅうり',
-    'レタス',
-    '醤油',
-    '味噌',
-    '塩',
-    '砂糖',
-    '油',
-    'バター',
-    'チーズ',
-  ];
-
-  for (const ingredient of commonIngredients) {
-    if (title.includes(ingredient)) {
-      ingredients.push(ingredient);
-    }
-  }
-
-  return ingredients;
 }

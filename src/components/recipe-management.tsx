@@ -41,9 +41,9 @@ import {
   Loader2,
   Package,
   AlertCircle,
-  Users,
   Eye,
   Check,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   buttonVariants,
@@ -643,9 +643,6 @@ function AddToShoppingListDialog({
             <div className="rounded-lg bg-blue-50 p-3">
               <h4 className="text-sm font-semibold">{extractedRecipe.title}</h4>
               <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-600">
-                {extractedRecipe.servings && (
-                  <span>👥 {extractedRecipe.servings}</span>
-                )}
                 {extractedRecipe.cookingTime && (
                   <span>⏱️ {extractedRecipe.cookingTime}</span>
                 )}
@@ -850,6 +847,10 @@ export default function RecipeManagement({
     useState<ExtractedRecipe | null>(null);
   const [loadingVideoId, setLoadingVideoId] = useState<string | null>(null);
   const [extractedVideoIds, setExtractedVideoIds] = useState<Set<string>>(new Set());
+  const [errorDialog, setErrorDialog] = useState<{
+    open: boolean;
+    message: string;
+  }>({ open: false, message: '' });
 
   const getExtractionMethodText = (
     method: ExtractedRecipe['extractionMethod'] | undefined
@@ -1019,6 +1020,7 @@ export default function RecipeManagement({
   const handleExtractRecipe = async (video: Video) => {
     // 対象動画のロード状態を設定
     setLoadingVideoId(video.id);
+    setErrorDialog({ open: false, message: '' });
     try {
       // YouTube URLから動画IDを抽出
       const videoId = extractVideoId(video.url);
@@ -1038,11 +1040,17 @@ export default function RecipeManagement({
         // 抽出済みリストに追加
         setExtractedVideoIds((prev) => new Set(prev).add(video.id));
       } else {
-        alert(data.error || 'レシピの抽出に失敗しました');
+        setErrorDialog({
+          open: true,
+          message: data.error || 'レシピの抽出に失敗しました',
+        });
       }
     } catch (error) {
       console.error('Recipe extraction error:', error);
-      alert('レシピの抽出中にエラーが発生しました');
+      setErrorDialog({
+        open: true,
+        message: 'レシピの抽出中にエラーが発生しました',
+      });
     } finally {
       // ロード状態をリセット
       setLoadingVideoId(null);
@@ -1361,14 +1369,6 @@ export default function RecipeManagement({
               <div className="space-y-6">
                 {/* 基本情報 */}
                 <div className="flex flex-col gap-3 rounded-lg border bg-gray-50 p-4 sm:flex-row sm:items-center sm:gap-6">
-                  {extractedRecipe.servings && (
-                    <div className="flex items-center gap-2">
-                      <Users className="h-5 w-5 text-gray-500" />
-                      <span className="text-sm font-medium">
-                        {extractedRecipe.servings}
-                      </span>
-                    </div>
-                  )}
                   {extractedRecipe.cookingTime && (
                     <div className="flex items-center gap-2">
                       <Clock className="h-5 w-5 text-gray-500" />
@@ -1392,7 +1392,10 @@ export default function RecipeManagement({
                 <div className="space-y-3">
                   <h4 className="flex items-center gap-2 text-base font-semibold">
                     <Package className="h-5 w-5 text-green-600" />
-                    材料 ({extractedRecipe.ingredients.length}個)
+                    材料 (
+                    {extractedRecipe.servings ||
+                      `${extractedRecipe.ingredients.length}個`}
+                    )
                   </h4>
                   {extractedRecipe.ingredients.length > 0 ? (
                     <div className="space-y-2">
@@ -1477,6 +1480,29 @@ export default function RecipeManagement({
         extractedRecipe={extractedRecipe}
         onAddToShoppingList={handleAddToShoppingListInternal}
       />
+
+      {/* エラー表示ダイアログ */}
+      <Dialog
+        open={errorDialog.open}
+        onOpenChange={(open) => setErrorDialog({ ...errorDialog, open })}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-6 w-6 text-red-500" />
+              <span>レシピの取得に失敗しました</span>
+            </DialogTitle>
+            <DialogDescription className="pt-4">
+              {errorDialog.message}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setErrorDialog({ open: false, message: '' })}>
+              OK
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
