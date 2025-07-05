@@ -42,6 +42,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface ShoppingListProps {
   shoppingItems: ShoppingItem[];
   setShoppingItems: React.Dispatch<React.SetStateAction<ShoppingItem[]>>;
+  onAddItemsToIngredients: (items: ShoppingItem[]) => void;
 }
 
 export interface ShoppingItem {
@@ -244,6 +245,7 @@ function AddShoppingItemButton({
 export default function ShoppingList({
   shoppingItems,
   setShoppingItems,
+  onAddItemsToIngredients,
 }: ShoppingListProps) {
   const [editingItem, setEditingItem] = useState<ShoppingItem | null>(null);
 
@@ -368,23 +370,9 @@ export default function ShoppingList({
     }
   };
 
-  const clearPurchasedItems = async () => {
-    if (confirm('購入済みのアイテムをすべて削除しますか？')) {
-      if (user) {
-        const purchasedItemIds = purchasedItems.map((item) => item.id);
-        const { error } = await supabase
-          .from('shopping_items')
-          .delete()
-          .in('id', purchasedItemIds);
-
-        if (error) {
-          console.error('Error clearing purchased items:', error);
-        } else {
-          setShoppingItems(unpurchasedItems);
-        }
-      } else {
-        setShoppingItems(unpurchasedItems);
-      }
+  const addPurchasedItemsToIngredients = () => {
+    if (confirm('購入済みのアイテムを材料管理に追加しますか？')) {
+      onAddItemsToIngredients(purchasedItems);
     }
   };
 
@@ -423,14 +411,14 @@ export default function ShoppingList({
             {purchasedItems.length > 0 && (
               <Button
                 variant="outline"
-                onClick={clearPurchasedItems}
+                onClick={addPurchasedItemsToIngredients}
                 className={buttonVariants({
                   theme: 'shopping',
                   variant: 'outline',
                   size: 'sm',
                 })}
               >
-                購入済みを削除
+                材料管理に追加
               </Button>
             )}
             <AddShoppingItemButton

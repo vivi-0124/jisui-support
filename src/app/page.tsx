@@ -309,6 +309,71 @@ export default function JisuiSupport() {
     }
   };
 
+  const handleAddItemsToIngredients = async (itemsToAdd: ShoppingItem[]) => {
+    if (user) {
+      // 1. 材料リストに追加/更新
+      for (const item of itemsToAdd) {
+        // 既存の材料があるかチェック
+        const { data: existing, error: checkError } = await supabase
+          .from('ingredients')
+          .select('id, quantity')
+          .eq('user_id', user.id)
+          .eq('name', item.name)
+          .eq('unit', item.unit)
+          .single();
+
+        if (checkError && checkError.code !== 'PGRST116') { // 'PGRST116'は結果0件のエラー
+          console.error('Error checking existing ingredient:', checkError);
+          continue;
+        }
+
+        if (existing) {
+          // 更新
+          const { error: updateError } = await supabase
+            .from('ingredients')
+            .update({ quantity: existing.quantity + item.quantity })
+            .eq('id', existing.id);
+          if (updateError) console.error('Error updating ingredient:', updateError);
+        } else {
+          // 新規追加
+          const { error: insertError } = await supabase
+            .from('ingredients')
+            .insert({
+              user_id: user.id,
+              name: item.name,
+              category: item.category,
+              quantity: item.quantity,
+              unit: item.unit,
+            });
+          if (insertError) console.error('Error inserting ingredient:', insertError);
+        }
+      }
+
+      // 2. 買い物リストから削除
+      const itemIdsToRemove = itemsToAdd.map(item => item.id);
+      const { error: deleteError } = await supabase
+        .from('shopping_items')
+        .delete()
+        .in('id', itemIdsToRemove);
+
+      if (deleteError) {
+        console.error('Error deleting shopping items:', deleteError);
+        alert('買い物リストの更新に失敗しました。');
+      } else {
+        // 3. 両方の状態を再読み込みしてUIを更新
+        const { data: ingredientsData } = await supabase.from('ingredients').select('*').eq('user_id', user.id);
+        setIngredients(ingredientsData || []);
+        
+        const { data: shoppingData } = await supabase.from('shopping_items').select('*').eq('user_id', user.id);
+        setShoppingItems(shoppingData || []);
+        
+        alert('購入済みのアイテムを材料管理に追加しました！');
+      }
+    } else {
+      alert('材料管理に追加するには、ログインが必要です。');
+    }
+  };
+
   // マウント前は何も表示しない
   if (!mounted) {
     return null;
@@ -512,6 +577,7 @@ export default function JisuiSupport() {
             <ShoppingList
               shoppingItems={shoppingItems}
               setShoppingItems={setShoppingItems}
+              onAddItemsToIngredients={handleAddItemsToIngredients}
             />
           </TabsContent>
 
