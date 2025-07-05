@@ -77,6 +77,10 @@ const UNITS = [
   'パック',
   '大さじ',
   '小さじ',
+  'カップ',
+  'cc',
+  '少々',
+  '適量',
 ];
 
 export interface Video {
@@ -101,6 +105,15 @@ export interface Playlist {
 interface RecipeManagementProps {
   playlists: Playlist[];
   setPlaylists: React.Dispatch<React.SetStateAction<Playlist[]>>;
+  onAddToShoppingList: (
+    ingredients: {
+      name: string;
+      category: string;
+      quantity: number;
+      unit: string;
+      notes?: string;
+    }[]
+  ) => void;
 }
 
 interface ExtractedRecipe {
@@ -383,6 +396,76 @@ interface AddToShoppingListDialogProps {
   ) => void;
 }
 
+// 材料解析ロジックを共通化
+const parseIngredient = (
+  ingredient: string
+): { name: string; quantity: number; unit: string } => {
+  const unitRegex = UNITS.join('|');
+  // Handle full-width numbers and fractions
+  const quantityRegex = `([\\d０-９\\.\\/\\-〜～]+)`;
+
+  // Normalize full-width characters to half-width
+  const normalizedIngredient = ingredient
+    .replace(/[０-９．／〜～]/g, (s) => {
+      return String.fromCharCode(s.charCodeAt(0) - 0xfee0);
+    })
+    .replace('〜', '-')
+    .replace('～', '-');
+
+  // 1. 「名前 数量 単位」のパターン (e.g., "豚バラ肉 100 g")
+  let match = normalizedIngredient.match(
+    new RegExp(`^(.*?)\\s*${quantityRegex}\\s*(${unitRegex})$`)
+  );
+  if (match) {
+    const name = match[1].trim();
+    const quantityStr = match[2];
+    const unit = match[3];
+    let quantity = 1;
+
+    if (quantityStr.includes('/')) {
+      const parts = quantityStr.split('/');
+      quantity = parseInt(parts[0], 10) / parseInt(parts[1], 10);
+    } else if (quantityStr.includes('-')) {
+      const parts = quantityStr.split('-');
+      quantity = parseFloat(parts[1]); // Use the upper bound of a range
+    } else {
+      quantity = parseFloat(quantityStr);
+    }
+    return { name, quantity: isNaN(quantity) ? 1 : quantity, unit };
+  }
+
+  // 2. 「名前 単位」（少々・適量など）のパターン
+  match = normalizedIngredient.match(new RegExp(`^(.*?)\\s*(${unitRegex})$`));
+  if (match) {
+    const name = match[1].trim();
+    const unit = match[2];
+    if (unit === '少々' || unit === '適量') {
+      return { name, quantity: 1, unit };
+    }
+  }
+
+  // 3. 「名前 数量」 (単位なし) のパターン (e.g., "卵 1")
+  match = normalizedIngredient.match(new RegExp(`^(.*?)\\s*${quantityRegex}$`));
+  if (match) {
+    const name = match[1].trim();
+    const quantityStr = match[2];
+    let quantity = 1;
+    if (quantityStr.includes('/')) {
+      const parts = quantityStr.split('/');
+      quantity = parseInt(parts[0], 10) / parseInt(parts[1], 10);
+    } else if (quantityStr.includes('-')) {
+      const parts = quantityStr.split('-');
+      quantity = parseFloat(parts[1]);
+    } else {
+      quantity = parseFloat(quantityStr);
+    }
+    return { name, quantity: isNaN(quantity) ? 1 : quantity, unit: '個' };
+  }
+
+  // マッチしない場合は、元の文字列を名前として返す
+  return { name: ingredient.trim(), quantity: 1, unit: '個' };
+};
+
 function AddToShoppingListDialog({
   isOpen,
   onClose,
@@ -394,6 +477,7 @@ function AddToShoppingListDialog({
     Record<
       string,
       {
+        name: string;
         category: string;
         quantity: number;
         unit: string;
@@ -402,6 +486,21 @@ function AddToShoppingListDialog({
     >
   >({});
 
+  const allIngredientsSelected =
+    extractedRecipe &&
+    selectedIngredients.length === extractedRecipe.ingredients.length;
+
+  const handleToggleSelectAll = () => {
+    if (!extractedRecipe) return;
+    if (allIngredientsSelected) {
+      setSelectedIngredients([]);
+    } else {
+      setSelectedIngredients(
+        extractedRecipe.ingredients.map((_, index) => `ingredient-${index}`)
+      );
+    }
+  };
+
   useEffect(() => {
     if (extractedRecipe && isOpen) {
       // 初期化
@@ -409,6 +508,7 @@ function AddToShoppingListDialog({
       const initialDetails: Record<
         string,
         {
+          name: string;
           category: string;
           quantity: number;
           unit: string;
@@ -418,40 +518,11 @@ function AddToShoppingListDialog({
 
       extractedRecipe.ingredients.forEach((ingredient, index) => {
         const ingredientId = `ingredient-${index}`;
-
-        // 材料名から分量と単位を分離
-        const parts = ingredient.split(/\s+/);
-        let name = ingredient;
-        let quantity = 1;
-        let unit = '個';
-
-        if (parts.length > 1) {
-          const lastPart = parts[parts.length - 1];
-          const secondLastPart =
-            parts.length > 2 ? parts[parts.length - 2] : '';
-
-          // 数量と単位の抽出
-          const quantityMatch = ingredient.match(
-            /(\d+(?:\.\d+)?)\s*(g|kg|ml|L|個|本|枚|袋|パック|大さじ|小さじ|カップ)/
-          );
-          if (quantityMatch) {
-            quantity = parseFloat(quantityMatch[1]);
-            unit = quantityMatch[2];
-            name = ingredient.replace(quantityMatch[0], '').trim();
-          } else if (UNITS.includes(lastPart)) {
-            unit = lastPart;
-            if (!isNaN(parseFloat(secondLastPart))) {
-              quantity = parseFloat(secondLastPart);
-              name = parts.slice(0, -2).join(' ');
-            } else {
-              name = parts.slice(0, -1).join(' ');
-            }
-          }
-        }
+        const parsed = parseIngredient(ingredient);
 
         // カテゴリの推測
         let category = 'その他';
-        const lowerName = name.toLowerCase();
+        const lowerName = parsed.name.toLowerCase();
         if (
           lowerName.includes('肉') ||
           lowerName.includes('豚') ||
@@ -462,20 +533,25 @@ function AddToShoppingListDialog({
         } else if (
           lowerName.includes('魚') ||
           lowerName.includes('海老') ||
-          lowerName.includes('蟹')
+          lowerName.includes('蟹') ||
+          lowerName.includes('えび') ||
+          lowerName.includes('かに')
         ) {
           category = '魚介類';
         } else if (
           lowerName.includes('牛乳') ||
           lowerName.includes('チーズ') ||
-          lowerName.includes('バター')
+          lowerName.includes('バター') ||
+          lowerName.includes('ヨーグルト')
         ) {
           category = '乳製品';
         } else if (
           lowerName.includes('醤油') ||
           lowerName.includes('味噌') ||
           lowerName.includes('塩') ||
-          lowerName.includes('砂糖')
+          lowerName.includes('砂糖') ||
+          lowerName.includes('みりん') ||
+          lowerName.includes('酒')
         ) {
           category = '調味料';
         } else if (
@@ -484,15 +560,17 @@ function AddToShoppingListDialog({
           lowerName.includes('じゃがいも') ||
           lowerName.includes('トマト') ||
           lowerName.includes('きゅうり') ||
-          lowerName.includes('レタス')
+          lowerName.includes('レタス') ||
+          lowerName.includes('キャベツ')
         ) {
           category = '野菜';
         }
 
         initialDetails[ingredientId] = {
+          name: parsed.name,
           category,
-          quantity,
-          unit,
+          quantity: parsed.quantity,
+          unit: parsed.unit,
           notes: '',
         };
       });
@@ -530,29 +608,9 @@ function AddToShoppingListDialog({
     }
 
     const ingredientsToAdd = selectedIngredients.map((ingredientId) => {
-      const index = parseInt(ingredientId.split('-')[1]);
-      const originalIngredient = extractedRecipe!.ingredients[index];
       const details = ingredientDetails[ingredientId];
-
-      // 材料名を抽出（分量と単位を除去）
-      let name = originalIngredient;
-      const quantityMatch = originalIngredient.match(
-        /(\d+(?:\.\d+)?)\s*(g|kg|ml|L|個|本|枚|袋|パック|大さじ|小さじ|カップ)/
-      );
-      if (quantityMatch) {
-        name = originalIngredient.replace(quantityMatch[0], '').trim();
-      } else {
-        const parts = originalIngredient.split(/\s+/);
-        if (parts.length > 1 && UNITS.includes(parts[parts.length - 1])) {
-          name = parts.slice(0, -1).join(' ');
-          if (parts.length > 2 && !isNaN(parseFloat(parts[parts.length - 2]))) {
-            name = parts.slice(0, -2).join(' ');
-          }
-        }
-      }
-
       return {
-        name: name || originalIngredient,
+        name: details.name,
         category: details.category,
         quantity: details.quantity,
         unit: details.unit,
@@ -568,8 +626,8 @@ function AddToShoppingListDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="mx-4 h-[90vh] w-[calc(100vw-2rem)] max-w-2xl overflow-hidden rounded-lg sm:mx-auto sm:h-auto sm:max-h-[90vh] sm:w-full">
-        <DialogHeader className="pb-4">
+      <DialogContent className="mx-4 flex h-[90vh] w-[calc(100vw-2rem)] max-w-2xl flex-col overflow-hidden rounded-lg sm:mx-auto sm:max-h-[90vh] sm:w-full">
+        <DialogHeader className="flex-shrink-0 pb-4">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <ShoppingCart className="h-5 w-5 text-purple-600" />
             買い物リストに追加
@@ -596,7 +654,19 @@ function AddToShoppingListDialog({
 
             {/* 選択状況 */}
             <div className="flex items-center justify-between rounded-lg bg-purple-50 p-3">
-              <span className="text-sm font-medium">材料を選択</span>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium">材料を選択</span>
+                {extractedRecipe && extractedRecipe.ingredients.length > 0 && (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={handleToggleSelectAll}
+                    className="p-0 text-sm h-auto font-medium text-purple-600 hover:text-purple-800"
+                  >
+                    {allIngredientsSelected ? '全選択を解除' : 'すべて選択'}
+                  </Button>
+                )}
+              </div>
               <Badge variant="secondary" className="text-xs">
                 {selectedIngredients.length}/
                 {extractedRecipe.ingredients.length}個選択中
@@ -609,6 +679,7 @@ function AddToShoppingListDialog({
                 const ingredientId = `ingredient-${index}`;
                 const isSelected = selectedIngredients.includes(ingredientId);
                 const details = ingredientDetails[ingredientId] || {
+                  name: ingredient, // フォールバック
                   category: 'その他',
                   quantity: 1,
                   unit: '個',
@@ -636,7 +707,7 @@ function AddToShoppingListDialog({
                         />
                         <div className="min-w-0 flex-1">
                           <div className="text-sm font-medium break-words">
-                            {ingredient}
+                            {details.name}
                           </div>
                           <div className="mt-1 text-xs text-gray-500">
                             元の表記: {ingredient}
@@ -742,7 +813,7 @@ function AddToShoppingListDialog({
           </div>
         </div>
 
-        <DialogFooter className="flex-col gap-2 border-t pt-4 sm:flex-row">
+        <DialogFooter className="flex-shrink-0 flex-col gap-2 border-t pt-4 sm:flex-row">
           <Button
             variant="outline"
             onClick={onClose}
@@ -767,6 +838,7 @@ function AddToShoppingListDialog({
 export default function RecipeManagement({
   playlists,
   setPlaylists,
+  onAddToShoppingList,
 }: RecipeManagementProps) {
   const { user } = useAuth();
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
@@ -984,7 +1056,7 @@ export default function RecipeManagement({
     return match ? match[1] : null;
   };
 
-  const handleAddToShoppingList = async (
+  const handleAddToShoppingListInternal = (
     ingredients: {
       name: string;
       category: string;
@@ -993,52 +1065,7 @@ export default function RecipeManagement({
       notes?: string;
     }[]
   ) => {
-    if (!user) {
-      // 未ログイン時はローカルストレージに保存
-      const existingItems = JSON.parse(
-        localStorage.getItem('shopping_list_data') || '[]'
-      );
-      const newItems = ingredients.map((ingredient) => ({
-        id: crypto.randomUUID(),
-        user_id: 'local',
-        name: ingredient.name,
-        category: ingredient.category,
-        quantity: ingredient.quantity,
-        unit: ingredient.unit,
-        is_purchased: false,
-        notes: ingredient.notes || null,
-        added_date: new Date().toISOString(),
-      }));
-
-      localStorage.setItem(
-        'shopping_list_data',
-        JSON.stringify([...existingItems, ...newItems])
-      );
-      alert(`${ingredients.length}個の材料を買い物リストに追加しました！`);
-    } else {
-      // ログイン時はSupabaseに保存
-      const itemsToInsert = ingredients.map((ingredient) => ({
-        user_id: user.id,
-        name: ingredient.name,
-        category: ingredient.category,
-        quantity: ingredient.quantity,
-        unit: ingredient.unit,
-        is_purchased: false,
-        notes: ingredient.notes || null,
-      }));
-
-      const { error } = await supabase
-        .from('shopping_items')
-        .insert(itemsToInsert);
-
-      if (error) {
-        console.error('Error adding to shopping list:', error);
-        alert('買い物リストへの追加に失敗しました');
-      } else {
-        alert(`${ingredients.length}個の材料を買い物リストに追加しました！`);
-      }
-    }
-
+    onAddToShoppingList(ingredients);
     setShowShoppingDialog(false);
   };
 
@@ -1319,7 +1346,7 @@ export default function RecipeManagement({
 
       {/* レシピ表示ダイアログ */}
       <Dialog open={showRecipeDialog} onOpenChange={setShowRecipeDialog}>
-        <DialogContent className="mx-4 flex h-[90vh] w-[calc(100vw-2rem)] max-w-2xl flex-col overflow-hidden rounded-lg sm:mx-auto sm:h-auto sm:max-h-[90vh] sm:w-full">
+        <DialogContent className="mx-4 flex h-[90vh] w-[calc(100vw-2rem)] max-w-2xl flex-col overflow-hidden rounded-lg sm:mx-auto sm:max-h-[90vh] sm:w-full">
           <DialogHeader className="flex-shrink-0 pb-4">
             <DialogTitle className="flex items-center gap-2 text-lg">
               <Download className="h-5 w-5 text-orange-600" />
@@ -1448,7 +1475,7 @@ export default function RecipeManagement({
         isOpen={showShoppingDialog}
         onClose={() => setShowShoppingDialog(false)}
         extractedRecipe={extractedRecipe}
-        onAddToShoppingList={handleAddToShoppingList}
+        onAddToShoppingList={handleAddToShoppingListInternal}
       />
     </div>
   );

@@ -260,6 +260,55 @@ export default function JisuiSupport() {
     }
   }, [user]);
 
+  const handleAddToShoppingList = async (
+    ingredientsToAdd: {
+      name: string;
+      category: string;
+      quantity: number;
+      unit: string;
+      notes?: string;
+    }[]
+  ) => {
+    if (user) {
+      const itemsToInsert = ingredientsToAdd.map((ingredient) => ({
+        user_id: user.id,
+        name: ingredient.name,
+        category: ingredient.category,
+        quantity: ingredient.quantity,
+        unit: ingredient.unit,
+        is_purchased: false,
+        notes: ingredient.notes || null,
+      }));
+
+      const { data, error } = await supabase
+        .from('shopping_items')
+        .insert(itemsToInsert)
+        .select();
+
+      if (error) {
+        console.error('Error adding to shopping list:', error);
+        alert('買い物リストへの追加に失敗しました');
+      } else {
+        setShoppingItems((prevItems) => [...prevItems, ...data]);
+        alert(`${ingredientsToAdd.length}個の材料を買い物リストに追加しました！`);
+      }
+    } else {
+      const newItems = ingredientsToAdd.map((ingredient) => ({
+        id: crypto.randomUUID(),
+        user_id: 'local',
+        name: ingredient.name,
+        category: ingredient.category,
+        quantity: ingredient.quantity,
+        unit: ingredient.unit,
+        is_purchased: false,
+        notes: ingredient.notes || null,
+        added_date: new Date().toISOString(),
+      }));
+      setShoppingItems((prevItems) => [...prevItems, ...newItems]);
+      alert(`${ingredientsToAdd.length}個の材料を買い物リストに追加しました！`);
+    }
+  };
+
   // マウント前は何も表示しない
   if (!mounted) {
     return null;
@@ -470,6 +519,7 @@ export default function JisuiSupport() {
             <RecipeManagement
               playlists={playlists}
               setPlaylists={setPlaylists}
+              onAddToShoppingList={handleAddToShoppingList}
             />
           </TabsContent>
 
