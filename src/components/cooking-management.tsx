@@ -54,6 +54,7 @@ interface CookingSession {
   status: 'preparing' | 'cooking' | 'completed';
   createdAt: string;
   completedAt?: string;
+  steps?: string[];
 }
 
 interface UsedIngredient {
@@ -473,6 +474,7 @@ export default function CookingManagement({
       videoId: recipe.extractedRecipe.videoId,
       status: 'preparing',
       createdAt: new Date().toISOString(),
+      steps: recipe.extractedRecipe.steps || [],
     };
 
     setCurrentSession(session);
@@ -989,6 +991,30 @@ function CookingInterface({
                 </a>
               </Button>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 調理手順 */}
+      {session.steps && session.steps.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-blue-600" />
+              調理手順
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ol className="space-y-4">
+              {session.steps.map((step, index) => (
+                <li key={index} className="flex items-start">
+                  <span className="mr-3 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-600">
+                    {index + 1}
+                  </span>
+                  <span className="mt-0.5">{step}</span>
+                </li>
+              ))}
+            </ol>
           </CardContent>
         </Card>
       )}
