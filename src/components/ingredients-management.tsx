@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { IngredientsManagementSkeleton } from '@/components/ui/content-skeleton';
 import {
   Dialog,
   DialogContent,
@@ -459,14 +460,7 @@ export default function IngredientsManagement({
   };
 
   if (loading) {
-    return (
-      <div className="flex min-h-[200px] items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-green-600"></div>
-          <p className="mt-2 text-gray-600">材料データを読み込み中...</p>
-        </div>
-      </div>
-    );
+    return <IngredientsManagementSkeleton />;
   }
 
   return (

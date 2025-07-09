@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { CookingManagementSkeleton } from '@/components/ui/content-skeleton';
 import {
   ChefHat,
   Play,
@@ -565,14 +566,7 @@ export default function CookingManagement({
   };
 
   if (_loading && cookableRecipes.length === 0) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="space-y-4 text-center">
-          <Loader2 className="mx-auto h-8 w-8 animate-spin text-amber-600" />
-          <p className="text-gray-600">調理可能なレシピを分析中...</p>
-        </div>
-      </div>
-    );
+    return <CookingManagementSkeleton />;
   }
 
   if (currentSession) {
