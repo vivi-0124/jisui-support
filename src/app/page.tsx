@@ -181,7 +181,7 @@ export default function JisuiSupport() {
           .from('ingredients')
           .select('*')
           .eq('user_id', user.id);
-        setIngredients(ingredientsData || []);
+        setIngredients((ingredientsData || []).filter(ingredient => ingredient.quantity > 0));
 
         const { data: shoppingData } = await supabase
           .from('shopping_items')
@@ -190,9 +190,8 @@ export default function JisuiSupport() {
         setShoppingItems(shoppingData || []);
       } else {
         // --- 未ログイン時 ---
-        setIngredients(
-          JSON.parse(localStorage.getItem(localIngredientsKey) || '[]')
-        );
+        const localIngredientsData = JSON.parse(localStorage.getItem(localIngredientsKey) || '[]');
+        setIngredients(localIngredientsData.filter((ingredient: Ingredient) => ingredient.quantity > 0));
         setShoppingItems(
           JSON.parse(localStorage.getItem(localShoppingKey) || '[]')
         );
