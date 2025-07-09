@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Plus,
   Package,
@@ -29,10 +30,19 @@ import {
   AlertTriangle,
   Trash2,
   Edit,
+  Shield,
+  X,
 } from 'lucide-react';
 import { buttonVariants, iconColorVariants } from '@/lib/theme-variants';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { 
+  COMMON_ALLERGENS, 
+  detectAllergens, 
+  hasUserAllergens,
+  ALLERGEN_SEVERITY_COLORS
+} from '@/lib/allergens';
+import { useUserAllergies } from '@/hooks/useUserAllergies';
 
 interface IngredientsManagementProps {
   ingredients: Ingredient[];
@@ -48,6 +58,7 @@ export interface Ingredient {
   unit: string;
   expiry_date: string | null; // expiryDateをexpiry_dateに変更し、null許容
   location: string | null; // null許容
+  allergens: string[] | null; // アレルゲン情報を追加
   created_at: string; // 追加
 }
 
@@ -81,6 +92,8 @@ function AddIngredientButton({
   children,
 }: AddIngredientButtonProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedAllergens, setSelectedAllergens] = useState<string[]>([]);
+  const [autoDetectedAllergens, setAutoDetectedAllergens] = useState<string[]>([]);
   const [newIngredient, setNewIngredient] = useState<
     Omit<Ingredient, 'id' | 'user_id' | 'created_at'>
   >({
@@ -90,7 +103,23 @@ function AddIngredientButton({
     unit: '',
     expiry_date: null,
     location: null,
+    allergens: null,
   });
+
+  // Auto-detect allergens when ingredient name changes
+  useEffect(() => {
+    if (newIngredient.name) {
+      const detected = detectAllergens(newIngredient.name);
+      setAutoDetectedAllergens(detected);
+      // Add detected allergens to selected ones if not already there
+      setSelectedAllergens(prev => {
+        const combined = [...new Set([...prev, ...detected])];
+        return combined;
+      });
+    } else {
+      setAutoDetectedAllergens([]);
+    }
+  }, [newIngredient.name]);
 
   useEffect(() => {
     if (editingIngredient) {
@@ -101,7 +130,9 @@ function AddIngredientButton({
         unit: editingIngredient.unit,
         expiry_date: editingIngredient.expiry_date,
         location: editingIngredient.location,
+        allergens: editingIngredient.allergens,
       });
+      setSelectedAllergens(editingIngredient.allergens || []);
       setIsDialogOpen(true);
     }
   }, [editingIngredient]);
@@ -112,7 +143,13 @@ function AddIngredientButton({
       return;
     }
 
-    onSave(newIngredient);
+    // Update the ingredient with selected allergens
+    const updatedIngredient = {
+      ...newIngredient,
+      allergens: selectedAllergens.length > 0 ? selectedAllergens : null,
+    };
+
+    onSave(updatedIngredient);
     handleCloseDialog();
     if (editingIngredient && onEditComplete) {
       onEditComplete();
@@ -128,10 +165,21 @@ function AddIngredientButton({
       unit: '',
       expiry_date: null,
       location: null,
+      allergens: null,
     });
+    setSelectedAllergens([]);
+    setAutoDetectedAllergens([]);
     if (editingIngredient && onEditComplete) {
       onEditComplete();
     }
+  };
+
+  const toggleAllergen = (allergen: string) => {
+    setSelectedAllergens(prev => 
+      prev.includes(allergen) 
+        ? prev.filter(a => a !== allergen)
+        : [...prev, allergen]
+    );
   };
 
   return (
@@ -248,6 +296,72 @@ function AddIngredientButton({
               </SelectContent>
             </Select>
           </div>
+          
+          {/* Allergen Selection Section */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-orange-600" />
+              <Label>含まれるアレルゲン</Label>
+            </div>
+            
+            {autoDetectedAllergens.length > 0 && (
+              <div className="p-3 bg-orange-50 border border-orange-200 rounded-md">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="h-4 w-4 text-orange-600" />
+                  <span className="text-sm font-medium text-orange-800">
+                    自動検出されたアレルゲン
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {autoDetectedAllergens.map(allergen => (
+                    <Badge key={allergen} variant="secondary" className="text-orange-700 bg-orange-100">
+                      {allergen}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            <div className="grid grid-cols-3 gap-2">
+              {COMMON_ALLERGENS.map((allergen) => (
+                <div 
+                  key={allergen}
+                  className="flex items-center space-x-2 cursor-pointer p-2 rounded border hover:bg-gray-50"
+                  onClick={() => toggleAllergen(allergen)}
+                >
+                  <Checkbox
+                    id={`allergen-${allergen}`}
+                    checked={selectedAllergens.includes(allergen)}
+                    className="pointer-events-none"
+                  />
+                  <Label 
+                    htmlFor={`allergen-${allergen}`}
+                    className={`text-sm cursor-pointer ${
+                      autoDetectedAllergens.includes(allergen) ? 'font-medium text-orange-700' : ''
+                    }`}
+                  >
+                    {allergen}
+                  </Label>
+                </div>
+              ))}
+            </div>
+            
+            {selectedAllergens.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {selectedAllergens.map(allergen => (
+                  <Badge 
+                    key={allergen} 
+                    variant="destructive" 
+                    className="cursor-pointer"
+                    onClick={() => toggleAllergen(allergen)}
+                  >
+                    {allergen}
+                    <X className="ml-1 h-3 w-3" />
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={handleCloseDialog}>
@@ -273,6 +387,7 @@ export default function IngredientsManagement({
     null
   );
   const { user, loading } = useAuth();
+  const { allergies: userAllergies } = useUserAllergies();
 
   const getExpiryStatus = (expiryDate: string | null) => {
     if (!expiryDate) return 'fresh';
@@ -296,6 +411,18 @@ export default function IngredientsManagement({
 
   const expiredIngredients = ingredients.filter(
     (ingredient) => getExpiryStatus(ingredient.expiry_date) === 'expired'
+  );
+
+  // Check for allergen conflicts
+  const getIngredientAllergenWarning = (ingredient: Ingredient) => {
+    if (!ingredient.allergens || ingredient.allergens.length === 0) return null;
+    
+    const conflict = hasUserAllergens(ingredient.allergens, userAllergies);
+    return conflict.hasAllergens ? conflict : null;
+  };
+
+  const allergenWarningIngredients = ingredients.filter(
+    ingredient => getIngredientAllergenWarning(ingredient)
   );
 
   const handleSaveIngredient = async (
@@ -484,6 +611,12 @@ export default function IngredientsManagement({
           <Calendar className="h-4 w-4 text-red-600" />
           <span>期限切れ {expiredIngredients.length}品</span>
         </div>
+        {userAllergies.length > 0 && (
+          <div className="flex items-center gap-1">
+            <Shield className="h-4 w-4 text-red-600" />
+            <span>アレルギー警告 {allergenWarningIngredients.length}品</span>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between">
@@ -526,6 +659,8 @@ export default function IngredientsManagement({
         ) : (
           ingredients.map((ingredient) => {
             const expiryStatus = getExpiryStatus(ingredient.expiry_date);
+            const allergenWarning = getIngredientAllergenWarning(ingredient);
+            
             return (
               <Card key={ingredient.id}>
                 <CardContent className="p-4">
@@ -542,7 +677,30 @@ export default function IngredientsManagement({
                             期限間近
                           </Badge>
                         )}
+                        {allergenWarning && (
+                          <Badge 
+                            variant="destructive" 
+                            className={`${ALLERGEN_SEVERITY_COLORS[allergenWarning.maxSeverity!]} flex items-center gap-1`}
+                          >
+                            <Shield className="h-3 w-3" />
+                            アレルギー警告
+                          </Badge>
+                        )}
                       </div>
+                      
+                      {/* Allergen warning details */}
+                      {allergenWarning && (
+                        <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded text-sm">
+                          <div className="flex items-center gap-1 font-medium text-red-800">
+                            <AlertTriangle className="h-3 w-3" />
+                            アレルゲンが含まれています
+                          </div>
+                          <div className="text-red-700 mt-1">
+                            {allergenWarning.conflictingAllergens.join('、')}
+                          </div>
+                        </div>
+                      )}
+                      
                       <div className="space-y-1 text-sm text-gray-600">
                         <div>
                           数量: {ingredient.quantity}
@@ -553,6 +711,24 @@ export default function IngredientsManagement({
                         )}
                         {ingredient.location && (
                           <div>保存場所: {ingredient.location}</div>
+                        )}
+                        {ingredient.allergens && ingredient.allergens.length > 0 && (
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span>含有アレルゲン:</span>
+                            {ingredient.allergens.map(allergen => (
+                              <Badge 
+                                key={allergen} 
+                                variant="outline" 
+                                className={`text-xs ${
+                                  userAllergies.some(ua => ua.allergen === allergen) 
+                                    ? 'border-red-300 text-red-700 bg-red-50'
+                                    : 'border-gray-300'
+                                }`}
+                              >
+                                {allergen}
+                              </Badge>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </div>

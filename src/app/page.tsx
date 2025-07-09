@@ -58,6 +58,7 @@ import {
   Loader2,
   HelpCircle,
   AlertTriangle,
+  Shield,
 } from 'lucide-react';
 import IngredientsManagement, {
   Ingredient,
@@ -65,6 +66,7 @@ import IngredientsManagement, {
 import ShoppingList from '@/components/shopping-list';
 import RecipeManagement from '@/components/recipe-management';
 import CookingManagement from '@/components/cooking-management';
+import AllergyManagement from '@/components/allergy-management';
 import {
   gradientButtonVariants,
   headerVariants,
@@ -513,6 +515,13 @@ export default function JisuiSupport() {
               </Button>
               <Button
                 size="lg"
+                onClick={() => setActiveTab('allergies')}
+                className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 px-4 py-2 text-lg font-semibold"
+              >
+                <Shield className="h-6 w-6 text-white" />
+              </Button>
+              <Button
+                size="lg"
                 onClick={() => setActiveTab('shopping')}
                 className={gradientButtonVariants({
                   theme: 'shopping',
@@ -579,6 +588,11 @@ export default function JisuiSupport() {
             />
           </TabsContent>
 
+          {/* Allergy Management Tab Content */}
+          <TabsContent value="allergies" className="space-y-6">
+            <AllergyManagement />
+          </TabsContent>
+
           {/* Shopping List Tab Content */}
           <TabsContent value="shopping" className="space-y-6">
             <ShoppingList
@@ -597,38 +611,45 @@ export default function JisuiSupport() {
           </TabsContent>
 
           {/* Bottom Navigation */}
-          <TabsList className="fixed right-0 bottom-0 left-0 grid h-16 w-full grid-cols-5 rounded-none border-t bg-white p-1 shadow-lg">
+          <TabsList className="fixed right-0 bottom-0 left-0 grid h-16 w-full grid-cols-6 rounded-none border-t bg-white p-1 shadow-lg">
             <TabsTrigger
               value="home"
-              className={`flex flex-col items-center gap-1 px-2 py-1 text-xs data-[state=active]:text-gray-600`}
+              className={`flex flex-col items-center gap-1 px-1 py-1 text-xs data-[state=active]:text-gray-600`}
             >
               <Home className="h-4 w-4" />
               ホーム
             </TabsTrigger>
             <TabsTrigger
               value="ingredients"
-              className={`flex flex-col items-center gap-1 px-2 py-1 text-xs data-[state=active]:text-green-600`}
+              className={`flex flex-col items-center gap-1 px-1 py-1 text-xs data-[state=active]:text-green-600`}
             >
               <Package className="h-4 w-4" />
               材料管理
             </TabsTrigger>
             <TabsTrigger
               value="cooking"
-              className={`flex flex-col items-center gap-1 px-2 py-1 text-xs data-[state=active]:text-amber-600`}
+              className={`flex flex-col items-center gap-1 px-1 py-1 text-xs data-[state=active]:text-amber-600`}
             >
               <ChefHat className="h-4 w-4" />
               料理する
             </TabsTrigger>
             <TabsTrigger
+              value="allergies"
+              className={`flex flex-col items-center gap-1 px-1 py-1 text-xs data-[state=active]:text-red-600`}
+            >
+              <Shield className="h-4 w-4" />
+              アレルギー
+            </TabsTrigger>
+            <TabsTrigger
               value="shopping"
-              className={`flex flex-col items-center gap-1 px-2 py-1 text-xs data-[state=active]:text-purple-600`}
+              className={`flex flex-col items-center gap-1 px-1 py-1 text-xs data-[state=active]:text-purple-600`}
             >
               <ShoppingCart className="h-4 w-4" />
               買い物リスト
             </TabsTrigger>
             <TabsTrigger
               value="recipes"
-              className={`flex flex-col items-center gap-1 px-2 py-1 text-xs data-[state=active]:text-blue-600`}
+              className={`flex flex-col items-center gap-1 px-1 py-1 text-xs data-[state=active]:text-blue-600`}
             >
               <BookOpen className="h-4 w-4" />
               レシピ管理

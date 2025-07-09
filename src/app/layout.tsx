@@ -1,15 +1,9 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import './globals.css';
 import { StagewiseToolbar } from '@stagewise/toolbar-next';
 import { ReactPlugin } from '@stagewise-plugins/react';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-});
 
 export const metadata: Metadata = {
   title: '自炊サポート',
@@ -25,8 +19,7 @@ export default function RootLayout({
     <html lang="ja" suppressHydrationWarning>
       <body
         className={cn(
-          'bg-background min-h-screen font-sans antialiased',
-          inter.variable
+          'bg-background min-h-screen font-sans antialiased'
         )}
       >
         <AuthProvider>{children}</AuthProvider>
