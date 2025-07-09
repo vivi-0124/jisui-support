@@ -523,7 +523,15 @@ function AddToShoppingListDialog({
         // カテゴリの推測
         let category = 'その他';
         const lowerName = parsed.name.toLowerCase();
+        // 乳製品を最初にチェック（牛乳の「牛」が肉類に誤分類されないように）
         if (
+          lowerName.includes('牛乳') ||
+          lowerName.includes('チーズ') ||
+          lowerName.includes('バター') ||
+          lowerName.includes('ヨーグルト')
+        ) {
+          category = '乳製品';
+        } else if (
           lowerName.includes('肉') ||
           lowerName.includes('豚') ||
           lowerName.includes('牛') ||
@@ -535,23 +543,80 @@ function AddToShoppingListDialog({
           lowerName.includes('海老') ||
           lowerName.includes('蟹') ||
           lowerName.includes('えび') ||
-          lowerName.includes('かに')
+          lowerName.includes('かに') ||
+          lowerName.includes('鮭') ||
+          lowerName.includes('さけ') ||
+          lowerName.includes('まぐろ') ||
+          lowerName.includes('あじ') ||
+          lowerName.includes('さば')
         ) {
           category = '魚介類';
         } else if (
-          lowerName.includes('牛乳') ||
-          lowerName.includes('チーズ') ||
-          lowerName.includes('バター') ||
-          lowerName.includes('ヨーグルト')
-        ) {
-          category = '乳製品';
-        } else if (
+          // 基本的な調味料
           lowerName.includes('醤油') ||
           lowerName.includes('味噌') ||
           lowerName.includes('塩') ||
           lowerName.includes('砂糖') ||
           lowerName.includes('みりん') ||
-          lowerName.includes('酒')
+          lowerName.includes('酒') ||
+          
+          // 酢類
+          lowerName.includes('酢') ||
+          lowerName.includes('ポン酢') ||
+          
+          // 油類
+          lowerName.includes('油') ||
+          lowerName.includes('オイル') ||
+          
+          // 胡椒・スパイス類
+          lowerName.includes('コショウ') ||
+          lowerName.includes('胡椒') ||
+          lowerName.includes('こしょう') ||
+          lowerName.includes('スパイス') ||
+          lowerName.includes('ハーブ') ||
+          
+          // 一般的な調味料
+          lowerName.includes('マヨネーズ') ||
+          lowerName.includes('ケチャップ') ||
+          lowerName.includes('ソース') ||
+          
+          // だし・出汁類
+          lowerName.includes('だし') ||
+          lowerName.includes('出汁') ||
+          
+          // アルコール調味料
+          lowerName.includes('ワイン') ||
+          lowerName.includes('料理酒') ||
+          
+          // 日本の調味料
+          lowerName.includes('めんつゆ') ||
+          lowerName.includes('たれ') ||
+          lowerName.includes('ドレッシング') ||
+          
+          // 薬味・香味野菜（調味料として使用）
+          lowerName.includes('にんにく') ||
+          lowerName.includes('ニンニク') ||
+          lowerName.includes('しょうが') ||
+          lowerName.includes('生姜') ||
+          
+          // 和の調味料
+          lowerName.includes('わさび') ||
+          lowerName.includes('からし') ||
+          lowerName.includes('山椒') ||
+          
+          // 辛味調味料
+          lowerName.includes('唐辛子') ||
+          lowerName.includes('豆板醤') ||
+          lowerName.includes('コチュジャン') ||
+          
+          // アジア系調味料
+          lowerName.includes('オイスターソース') ||
+          lowerName.includes('ナンプラー') ||
+          
+          // 甘味調味料
+          lowerName.includes('はちみつ') ||
+          lowerName.includes('蜂蜜') ||
+          lowerName.includes('シロップ')
         ) {
           category = '調味料';
         } else if (
