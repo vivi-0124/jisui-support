@@ -8,6 +8,12 @@ export async function middleware(request: NextRequest) {
     },
   });
 
+  // Skip Supabase authentication if environment variables are not set (for demo purposes)
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.log('Middleware: Supabase environment variables not set, skipping authentication');
+    return response;
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

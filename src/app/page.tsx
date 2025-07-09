@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { PageSkeleton } from '@/components/ui/page-skeleton';
 
 import {
   Accordion,
@@ -381,14 +382,7 @@ export default function JisuiSupport() {
   }
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
-          <p className="mt-2 text-gray-600">読み込み中...</p>
-        </div>
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   return (
