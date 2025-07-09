@@ -82,6 +82,7 @@ import {
 } from '@/components/recipe-management';
 import { ShoppingItem } from '@/components/shopping-list';
 import { AddToHomeScreen } from '@/components/ui/add-to-home-screen';
+import { AIRecipeExtract } from '@/components/youtube/AIRecipeExtract';
 
 // Mock types - これらは実際のsupabaseタイプに置き換える必要があります
 interface YouTubeVideo {
