@@ -523,7 +523,7 @@ export default function CookingManagement({
       }
     }
 
-    setIngredients(updatedIngredients);
+    setIngredients(updatedIngredients.filter(ingredient => ingredient.quantity > 0));
 
     // 調理セッションを完了
     const completedSession: CookingSession = {
