@@ -29,6 +29,8 @@ import {
   CheckCircle,
   Trash2,
   Edit,
+  Shield,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   buttonVariants,
@@ -38,6 +40,12 @@ import {
 } from '@/lib/theme-variants';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { 
+  detectAllergens, 
+  hasUserAllergens,
+  ALLERGEN_SEVERITY_COLORS
+} from '@/lib/allergens';
+import { useUserAllergies } from '@/hooks/useUserAllergies';
 
 interface ShoppingListProps {
   shoppingItems: ShoppingItem[];
@@ -54,6 +62,7 @@ export interface ShoppingItem {
   unit: string;
   is_purchased: boolean;
   notes: string | null;
+  allergens: string[] | null;
   added_date: string;
 }
 
@@ -250,9 +259,23 @@ export default function ShoppingList({
   const [editingItem, setEditingItem] = useState<ShoppingItem | null>(null);
 
   const { user, loading } = useAuth();
+  const { allergies: userAllergies } = useUserAllergies();
 
   const unpurchasedItems = shoppingItems.filter((item) => !item.is_purchased);
   const purchasedItems = shoppingItems.filter((item) => item.is_purchased);
+
+  // Check for allergen conflicts
+  const getItemAllergenWarning = (item: ShoppingItem) => {
+    const allergens = item.allergens || detectAllergens(item.name);
+    if (!allergens || allergens.length === 0) return null;
+    
+    const conflict = hasUserAllergens(allergens, userAllergies);
+    return conflict.hasAllergens ? conflict : null;
+  };
+
+  const allergenWarningItems = shoppingItems.filter(
+    item => getItemAllergenWarning(item)
+  );
 
   const handleSaveItem = async (
     itemData: Omit<ShoppingItem, 'id' | 'user_id' | 'added_date'>
@@ -402,6 +425,12 @@ export default function ShoppingList({
           <ShoppingCart className={iconColorVariants({ theme: 'shopping' })} />
           <span>合計 {shoppingItems.length}品</span>
         </div>
+        {userAllergies.length > 0 && (
+          <div className="flex items-center gap-1">
+            <Shield className="h-4 w-4 text-red-600" />
+            <span>アレルギー警告 {allergenWarningItems.length}品</span>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between">
@@ -468,52 +497,96 @@ export default function ShoppingList({
                 >
                   未購入 ({unpurchasedItems.length}品)
                 </h3>
-                {unpurchasedItems.map((item) => (
-                  <Card
-                    key={item.id}
-                    className={cardVariants({ theme: 'shopping' })}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => togglePurchaseStatus(item.id)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Circle className="h-4 w-4" />
-                        </Button>
-                        <div className="flex-1">
-                          <div className="mb-1 flex items-center gap-2">
-                            <h4 className="font-semibold">{item.name}</h4>
-                            <Badge variant="secondary">{item.category}</Badge>
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            数量: {item.quantity}
-                            {item.unit}
-                            {item.notes && ` | ${item.notes}`}
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
+                {unpurchasedItems.map((item) => {
+                  const allergenWarning = getItemAllergenWarning(item);
+                  return (
+                    <Card
+                      key={item.id}
+                      className={cardVariants({ theme: 'shopping' })}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-3">
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleEditItem(item)}
+                            onClick={() => togglePurchaseStatus(item.id)}
+                            className="h-8 w-8 p-0"
                           >
-                            <Edit className="h-4 w-4" />
+                            <Circle className="h-4 w-4" />
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDeleteItem(item.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex-1">
+                            <div className="mb-1 flex items-center gap-2">
+                              <h4 className="font-semibold">{item.name}</h4>
+                              <Badge variant="secondary">{item.category}</Badge>
+                              {allergenWarning && (
+                                <Badge 
+                                  variant="destructive" 
+                                  className={`${ALLERGEN_SEVERITY_COLORS[allergenWarning.maxSeverity!]} flex items-center gap-1`}
+                                >
+                                  <Shield className="h-3 w-3" />
+                                  アレルギー警告
+                                </Badge>
+                              )}
+                            </div>
+
+                            {/* Allergen warning details */}
+                            {allergenWarning && (
+                              <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded text-sm">
+                                <div className="flex items-center gap-1 font-medium text-red-800">
+                                  <AlertTriangle className="h-3 w-3" />
+                                  アレルゲンが含まれています
+                                </div>
+                                <div className="text-red-700 mt-1">
+                                  {allergenWarning.conflictingAllergens.join('、')}
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="text-sm text-gray-600">
+                              数量: {item.quantity}
+                              {item.unit}
+                              {item.notes && ` | ${item.notes}`}
+                              {(item.allergens || detectAllergens(item.name)).length > 0 && (
+                                <div className="flex items-center gap-1 flex-wrap mt-1">
+                                  <span>含有アレルゲン:</span>
+                                  {(item.allergens || detectAllergens(item.name)).map(allergen => (
+                                    <Badge 
+                                      key={allergen} 
+                                      variant="outline" 
+                                      className={`text-xs ${
+                                        userAllergies.some(ua => ua.allergen === allergen) 
+                                          ? 'border-red-300 text-red-700 bg-red-50'
+                                          : 'border-gray-300'
+                                      }`}
+                                    >
+                                      {allergen}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditItem(item)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeleteItem(item.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
 

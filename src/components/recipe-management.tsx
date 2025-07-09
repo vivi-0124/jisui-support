@@ -44,6 +44,7 @@ import {
   Eye,
   Check,
   AlertTriangle,
+  Shield,
 } from 'lucide-react';
 import {
   buttonVariants,
@@ -53,6 +54,11 @@ import {
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { 
+  detectAllergens, 
+  hasUserAllergens
+} from '@/lib/allergens';
+import { useUserAllergies } from '@/hooks/useUserAllergies';
 
 // 定数配列をコンポーネント外に移動
 const CATEGORIES = [
@@ -123,6 +129,7 @@ interface ExtractedRecipe {
   servings?: string;
   cookingTime?: string;
   description: string;
+  allergens?: string[];
   extractionMethod:
     | 'gemini_video_analysis'
     | 'gemini_text_analysis'
@@ -838,6 +845,7 @@ export default function RecipeManagement({
   onAddToShoppingList,
 }: RecipeManagementProps) {
   const { user } = useAuth();
+  const { allergies: userAllergies } = useUserAllergies();
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
   const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
   const [isAddVideoDialogOpen, setIsAddVideoDialogOpen] = useState(false);
@@ -1034,7 +1042,18 @@ export default function RecipeManagement({
       const data = await response.json();
 
       if (response.ok) {
-        setExtractedRecipe(data.recipe);
+        // Add allergen detection to extracted recipe
+        const recipe = data.recipe;
+        if (recipe.ingredients && recipe.ingredients.length > 0) {
+          const detectedAllergens = new Set<string>();
+          recipe.ingredients.forEach((ingredient: string) => {
+            const allergens = detectAllergens(ingredient);
+            allergens.forEach(allergen => detectedAllergens.add(allergen));
+          });
+          recipe.allergens = Array.from(detectedAllergens);
+        }
+        
+        setExtractedRecipe(recipe);
         setShowRecipeDialog(true);
 
         // 抽出済みリストに追加
@@ -1387,6 +1406,45 @@ export default function RecipeManagement({
                     {getExtractionMethodText(extractedRecipe.extractionMethod)}
                   </div>
                 </div>
+
+                {/* アレルゲン情報 */}
+                {extractedRecipe.allergens && extractedRecipe.allergens.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="flex items-center gap-2 text-base font-semibold">
+                      <Shield className="h-5 w-5 text-red-600" />
+                      含有アレルゲン
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {extractedRecipe.allergens.map(allergen => (
+                        <Badge 
+                          key={allergen} 
+                          variant="outline" 
+                          className={`${
+                            userAllergies.some(ua => ua.allergen === allergen) 
+                              ? 'border-red-300 text-red-700 bg-red-50'
+                              : 'border-gray-300'
+                          }`}
+                        >
+                          {allergen}
+                        </Badge>
+                      ))}
+                    </div>
+                    {(() => {
+                      const conflict = hasUserAllergens(extractedRecipe.allergens, userAllergies);
+                      return conflict.hasAllergens ? (
+                        <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                          <div className="flex items-center gap-2 font-medium text-red-800">
+                            <AlertTriangle className="h-4 w-4" />
+                            アレルギー警告
+                          </div>
+                          <div className="text-red-700 mt-1">
+                            このレシピには以下のアレルゲンが含まれています: {conflict.conflictingAllergens.join('、')}
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                )}
 
                 {/* 材料 */}
                 <div className="space-y-3">
