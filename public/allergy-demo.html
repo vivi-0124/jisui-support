@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アレルギー管理機能デモ - 自炊サポート</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background: #f8fafc;
+            color: #1a202c;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        
+        .shield-icon {
+            width: 20px;
+            height: 20px;
+            fill: #dc2626;
+        }
+        
+        .package-icon {
+            width: 20px;
+            height: 20px;
+            fill: #16a34a;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            margin: 2px;
+        }
+        
+        .badge-secondary {
+            background: #f1f5f9;
+            color: #475569;
+        }
+        
+        .badge-destructive {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+        
+        .badge-allergen {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+        
+        .badge-safe {
+            background: #f0f9ff;
+            color: #0284c7;
+            border: 1px solid #bae6fd;
+        }
+        
+        .warning-box {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 8px 0;
+        }
+        
+        .warning-title {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+            color: #dc2626;
+            margin-bottom: 4px;
+        }
+        
+        .warning-icon {
+            width: 16px;
+            height: 16px;
+            fill: #dc2626;
+        }
+        
+        .allergy-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .allergy-item {
+            display: flex;
+            align-items: center;
+            justify-between;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: white;
+        }
+        
+        .allergy-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .severity-mild {
+            background: #fef3c7;
+            color: #d97706;
+        }
+        
+        .severity-moderate {
+            background: #fed7aa;
+            color: #ea580c;
+        }
+        
+        .severity-severe {
+            background: #fecaca;
+            color: #dc2626;
+        }
+        
+        .ingredient-item {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            padding: 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: white;
+            margin-bottom: 12px;
+        }
+        
+        .ingredient-info {
+            flex: 1;
+        }
+        
+        .ingredient-name {
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .ingredient-details {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+        
+        .allergen-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 8px;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #64748b;
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .tab-demo {
+            display: flex;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            border: none;
+            background: #f8fafc;
+            color: #64748b;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+        }
+        
+        .tab.active {
+            background: #dc2626;
+            color: white;
+        }
+        
+        .tab-icon {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ アレルギー管理機能デモ</h1>
+            <p>自炊サポートアプリに追加されたアレルギー対応機能</p>
+        </div>
+
+        <!-- Navigation Demo -->
+        <div class="tab-demo">
+            <div class="tab">
+                <svg class="tab-icon" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                ホーム
+            </div>
+            <div class="tab">
+                <svg class="tab-icon" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                材料管理
+            </div>
+            <div class="tab">
+                <svg class="tab-icon" viewBox="0 0 24 24"><path d="M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/></svg>
+                料理する
+            </div>
+            <div class="tab active">
+                <svg class="tab-icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                アレルギー
+            </div>
+            <div class="tab">
+                <svg class="tab-icon" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                買い物リスト
+            </div>
+            <div class="tab">
+                <svg class="tab-icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/></svg>
+                レシピ管理
+            </div>
+        </div>
+
+        <!-- User Allergy Management -->
+        <div class="card">
+            <div class="title">
+                <svg class="shield-icon" viewBox="0 0 24 24">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                ユーザーアレルギー管理
+            </div>
+            
+            <div class="allergy-list">
+                <div class="allergy-item">
+                    <div class="allergy-info">
+                        <span>卵</span>
+                        <span class="badge severity-severe">重度</span>
+                    </div>
+                </div>
+                <div class="allergy-item">
+                    <div class="allergy-info">
+                        <span>乳</span>
+                        <span class="badge severity-moderate">中度</span>
+                    </div>
+                </div>
+                <div class="allergy-item">
+                    <div class="allergy-info">
+                        <span>小麦</span>
+                        <span class="badge severity-mild">軽度</span>
+                    </div>
+                </div>
+                <div class="allergy-item">
+                    <div class="allergy-info">
+                        <span>えび</span>
+                        <span class="badge severity-severe">重度</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ingredient Management with Allergy Warnings -->
+        <div class="card">
+            <div class="title">
+                <svg class="package-icon" viewBox="0 0 24 24">
+                    <path d="M16.5 9.4L7.55 4.24C7.21 4.09 6.81 4.23 6.66 4.57L6.5 4.8v14.4c0 .38.31.7.7.7h10.1c.38 0 .7-.31.7-.7V10.5c0-.38-.31-.7-.7-.7h-1.8z"/>
+                </svg>
+                材料管理（アレルギー警告付き）
+            </div>
+            
+            <div class="stats">
+                <div class="stat-item">
+                    📦 保有食材 8品
+                </div>
+                <div class="stat-item">
+                    ⚠️ 期限間近 2品
+                </div>
+                <div class="stat-item">
+                    🛡️ アレルギー警告 3品
+                </div>
+            </div>
+
+            <div class="ingredient-item">
+                <div class="ingredient-info">
+                    <div class="ingredient-name">マヨネーズ</div>
+                    <div class="ingredient-details">数量: 1本 | 消費期限: 2024-02-15</div>
+                    
+                    <div class="warning-box">
+                        <div class="warning-title">
+                            <svg class="warning-icon" viewBox="0 0 24 24">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                            </svg>
+                            アレルゲンが含まれています
+                        </div>
+                        <div>卵</div>
+                    </div>
+                    
+                    <div class="allergen-tags">
+                        <span>含有アレルゲン:</span>
+                        <span class="badge badge-allergen">卵</span>
+                    </div>
+                </div>
+                <div>
+                    <span class="badge badge-destructive">🛡️ アレルギー警告</span>
+                </div>
+            </div>
+
+            <div class="ingredient-item">
+                <div class="ingredient-info">
+                    <div class="ingredient-name">にんじん</div>
+                    <div class="ingredient-details">数量: 3本 | 消費期限: 2024-02-20</div>
+                    <div class="allergen-tags">
+                        <span class="badge badge-safe">アレルゲンなし</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ingredient-item">
+                <div class="ingredient-info">
+                    <div class="ingredient-name">えび</div>
+                    <div class="ingredient-details">数量: 200g | 消費期限: 2024-02-12</div>
+                    
+                    <div class="warning-box">
+                        <div class="warning-title">
+                            <svg class="warning-icon" viewBox="0 0 24 24">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                            </svg>
+                            アレルゲンが含まれています
+                        </div>
+                        <div>えび</div>
+                    </div>
+                    
+                    <div class="allergen-tags">
+                        <span>含有アレルゲン:</span>
+                        <span class="badge badge-allergen">えび</span>
+                    </div>
+                </div>
+                <div>
+                    <span class="badge badge-destructive">🛡️ アレルギー警告</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recipe with Allergy Information -->
+        <div class="card">
+            <div class="title">
+                <svg style="width: 20px; height: 20px; fill: #f59e0b;" viewBox="0 0 24 24">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                </svg>
+                レシピ（アレルギー情報付き）
+            </div>
+            
+            <h3 style="margin-bottom: 12px;">🍳 簡単オムライス</h3>
+            
+            <div style="margin-bottom: 16px;">
+                <div style="font-weight: 600; margin-bottom: 8px;">含有アレルゲン:</div>
+                <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                    <span class="badge badge-allergen">卵</span>
+                    <span class="badge badge-safe">米</span>
+                    <span class="badge badge-safe">玉ねぎ</span>
+                </div>
+            </div>
+
+            <div class="warning-box">
+                <div class="warning-title">
+                    <svg class="warning-icon" viewBox="0 0 24 24">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    </svg>
+                    アレルギー警告
+                </div>
+                <div>このレシピには以下のアレルゲンが含まれています: 卵</div>
+            </div>
+        </div>
+
+        <!-- Features Summary -->
+        <div class="card" style="background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);">
+            <div class="title">
+                ✨ 実装された機能
+            </div>
+            <ul style="list-style: none; space-y: 8px;">
+                <li>✅ ユーザーアレルギープロフィール管理（重症度設定可能）</li>
+                <li>✅ 材料名からの自動アレルゲン検出</li>
+                <li>✅ 材料・買い物リスト・レシピでのアレルギー警告表示</li>
+                <li>✅ 日本の食品表示法に基づく13品目のアレルゲン対応</li>
+                <li>✅ 重症度に応じた色分け表示</li>
+                <li>✅ レシピ抽出時の自動アレルゲン検出</li>
+                <li>✅ 統計情報でのアレルギー警告数表示</li>
+                <li>✅ 専用アレルギー管理タブの追加</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
