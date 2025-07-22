@@ -65,6 +65,7 @@ import IngredientsManagement, {
 import ShoppingList from '@/components/shopping-list';
 import RecipeManagement from '@/components/recipe-management';
 import CookingManagement from '@/components/cooking-management';
+import { RecipeDisplayDialog, ExtractedRecipe } from '@/components/recipe-display-dialog';
 import {
   gradientButtonVariants,
   headerVariants,
@@ -93,16 +94,6 @@ interface YouTubeVideo {
   duration?: string;
   viewCount?: number;
   publishedAt?: string;
-}
-
-interface ExtractedRecipe {
-  title: string;
-  ingredients: string[];
-  steps: string[];
-  servings?: string;
-  cookingTime?: string;
-  description: string;
-  extractionMethod: 'captions' | 'description' | 'ai_analysis';
 }
 
 // VideoCardPropsも新しいプロップを受け取るように更新
@@ -1272,96 +1263,13 @@ function VideoCard({
         </Dialog>
 
         {/* レシピ表示ダイアログ */}
-        <Dialog open={showRecipeDialog} onOpenChange={setShowRecipeDialog}>
-          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[700px]">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Download className="h-5 w-5 text-orange-600" />
-                抽出されたレシピ
-              </DialogTitle>
-              <DialogDescription>
-                動画から抽出された材料と手順です
-              </DialogDescription>
-            </DialogHeader>
-            {extractedRecipe && (
-              <div className="space-y-6 py-4">
-                {/* 基本情報 */}
-                <div className="grid grid-cols-2">
-                  {extractedRecipe.cookingTime && (
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-gray-600" />
-                      <span className="text-sm">
-                        {extractedRecipe.cookingTime}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* 材料 */}
-                <div className="space-y-3">
-                  <h4 className="flex items-center gap-2 font-semibold">
-                    <Package className="h-4 w-4 text-green-600" />
-                    材料 (
-                    {extractedRecipe.servings ||
-                      `${extractedRecipe.ingredients.length}個`}
-                    )
-                  </h4>
-                  {extractedRecipe.ingredients.length > 0 ? (
-                    <div className="grid gap-2">
-                      {extractedRecipe.ingredients.map((ingredient, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center gap-2 rounded-lg border bg-green-50 p-3"
-                        >
-                          <span className="text-sm">{ingredient}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">
-                      材料が見つかりませんでした
-                    </p>
-                  )}
-                </div>
-
-                {/* 手順 */}
-                <div className="space-y-3">
-                  <h4 className="flex items-center gap-2 font-semibold">
-                    <List className="h-4 w-4 text-blue-600" />
-                    手順 ({extractedRecipe.steps.length}ステップ)
-                  </h4>
-                  {extractedRecipe.steps.length > 0 ? (
-                    <div className="space-y-3">
-                      {extractedRecipe.steps.map((step, index) => (
-                        <div
-                          key={index}
-                          className="flex gap-3 rounded-lg border bg-blue-50 p-3"
-                        >
-                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
-                            {index + 1}
-                          </div>
-                          <span className="text-sm">{step}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">
-                      手順が見つかりませんでした
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setShowRecipeDialog(false)}
-              >
-                閉じる
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <RecipeDisplayDialog
+          recipe={extractedRecipe}
+          open={showRecipeDialog}
+          onOpenChange={setShowRecipeDialog}
+          showExtractionMethod={false}
+          showAddToShoppingListButton={false}
+        />
 
         {/* エラー表示ダイアログ */}
         <Dialog
